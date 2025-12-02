@@ -1,0 +1,38 @@
+# Visual Studio / Rider
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build output
+bin/
+obj/
+out/
+artifacts/
+
+# Test results
+TestResult*/
+[TestResults]/
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+.nuget/
+
+# Logs
+logs/
+*.log
+
+# Resharper / Rider / inne IDE
+_ReSharper*/
+*.DotSettings.user
+.idea/
+
+# Tymczasowe
+*.tmp
+*.temp
+
+# Konfiguracje lokalne
+appsettings.*.local.json

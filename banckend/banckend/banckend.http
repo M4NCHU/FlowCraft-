@@ -1,0 +1,6 @@
+@banckend_HostAddress = http://localhost:5157
+
+GET {{banckend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
