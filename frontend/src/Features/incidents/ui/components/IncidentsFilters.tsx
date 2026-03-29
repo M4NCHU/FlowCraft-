@@ -1,43 +1,32 @@
-import { useId } from "react";
-import type {
-  IncidentSeverity,
-  IncidentStatus,
-} from "../../../../entities/incidents/model/useIncidentsStore";
-import { useMachinesStore } from "../../../../entities/machines/model/useMachinesStore";
+﻿import { useId } from "react";
+import { FailureSeverity, FailureStatus } from "../../api/contracts";
 
 export type SortKey = "createdAt" | "severity" | "status" | "title";
 export type SortDir = "asc" | "desc";
 
 type Props = {
   q: string;
-  onQChange: (v: string) => void;
-
-  status: "" | IncidentStatus;
-  onStatusChange: (v: "" | IncidentStatus) => void;
-
-  severity: "" | IncidentSeverity;
-  onSeverityChange: (v: "" | IncidentSeverity) => void;
-
+  onQChange: (value: string) => void;
+  status: "" | FailureStatus;
+  onStatusChange: (value: "" | FailureStatus) => void;
+  severity: "" | FailureSeverity;
+  onSeverityChange: (value: "" | FailureSeverity) => void;
   machineId: "" | string;
-  onMachineChange: (v: "" | string) => void;
-
+  onMachineChange: (value: "" | string) => void;
+  machines: Array<{ assetName: string; assetId: string }>;
   sortBy: SortKey;
-  onSortByChange: (v: SortKey) => void;
-
+  onSortByChange: (value: SortKey) => void;
   dir: SortDir;
   onToggleDir: () => void;
-
   onReset?: () => void;
 };
 
 export function IncidentsFilters(props: Props) {
   const qId = useId();
-  const stId = useId();
-  const svId = useId();
-  const mcId = useId();
-  const soId = useId();
-
-  const machines = useMachinesStore((s) => s.machines);
+  const statusId = useId();
+  const severityId = useId();
+  const machineId = useId();
+  const sortId = useId();
 
   return (
     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -49,73 +38,86 @@ export function IncidentsFilters(props: Props) {
           <input
             id={qId}
             value={props.q}
-            onChange={(e) => props.onQChange(e.target.value)}
-            placeholder="Tytuł/Opis…"
+            onChange={(event) => props.onQChange(event.target.value)}
+            placeholder="Tytuł / opis..."
             className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300"
           />
         </div>
 
         <div className="flex items-center gap-2">
-          <label htmlFor={stId} className="text-xs text-slate-500">
+          <label htmlFor={statusId} className="text-xs text-slate-500">
             Status
           </label>
           <select
-            id={stId}
+            id={statusId}
             value={props.status}
-            onChange={(e) => props.onStatusChange(e.target.value as any)}
+            onChange={(event) =>
+              props.onStatusChange(
+                event.target.value ? (Number(event.target.value) as FailureStatus) : ""
+              )
+            }
             className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm"
           >
             <option value="">Wszystkie</option>
-            <option value="open">Nowe</option>
-            <option value="in_progress">W trakcie</option>
-            <option value="resolved">Zamknięte</option>
+            <option value={FailureStatus.Open}>Nowe</option>
+            <option value={FailureStatus.Triaged}>Wstępnie ocenione</option>
+            <option value={FailureStatus.InProgress}>W trakcie</option>
+            <option value={FailureStatus.Resolved}>Rozwiązane</option>
+            <option value={FailureStatus.Closed}>Zamknięte</option>
           </select>
         </div>
 
         <div className="flex items-center gap-2">
-          <label htmlFor={svId} className="text-xs text-slate-500">
+          <label htmlFor={severityId} className="text-xs text-slate-500">
             Priorytet
           </label>
           <select
-            id={svId}
+            id={severityId}
             value={props.severity}
-            onChange={(e) => props.onSeverityChange(e.target.value as any)}
+            onChange={(event) =>
+              props.onSeverityChange(
+                event.target.value
+                  ? (Number(event.target.value) as FailureSeverity)
+                  : ""
+              )
+            }
             className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm"
           >
             <option value="">Wszystkie</option>
-            <option value="high">Wysoki</option>
-            <option value="medium">Średni</option>
-            <option value="low">Niski</option>
+            <option value={FailureSeverity.Critical}>Krytyczny</option>
+            <option value={FailureSeverity.High}>Wysoki</option>
+            <option value={FailureSeverity.Medium}>Średni</option>
+            <option value={FailureSeverity.Low}>Niski</option>
           </select>
         </div>
 
         <div className="flex items-center gap-2">
-          <label htmlFor={mcId} className="text-xs text-slate-500">
+          <label htmlFor={machineId} className="text-xs text-slate-500">
             Maszyna
           </label>
           <select
-            id={mcId}
+            id={machineId}
             value={props.machineId}
-            onChange={(e) => props.onMachineChange(e.target.value)}
+            onChange={(event) => props.onMachineChange(event.target.value)}
             className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm"
           >
             <option value="">Wszystkie</option>
-            {machines.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
+            {props.machines.map((machine) => (
+              <option key={machine.assetId} value={machine.assetId}>
+                {machine.assetName}
               </option>
             ))}
           </select>
         </div>
 
         <div className="flex items-center gap-2">
-          <label htmlFor={soId} className="text-xs text-slate-500">
+          <label htmlFor={sortId} className="text-xs text-slate-500">
             Sortowanie
           </label>
           <select
-            id={soId}
+            id={sortId}
             value={props.sortBy}
-            onChange={(e) => props.onSortByChange(e.target.value as any)}
+            onChange={(event) => props.onSortByChange(event.target.value as SortKey)}
             className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm"
           >
             <option value="createdAt">Data zgłoszenia</option>

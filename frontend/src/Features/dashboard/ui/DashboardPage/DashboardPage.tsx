@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 
 export const DashboardPage: React.FC = () => {
   return (
@@ -6,7 +6,7 @@ export const DashboardPage: React.FC = () => {
       <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-sm text-slate-500">
-            Przegląd projektów, układów hali i ostatnich uruchomień
+            Przeglad projektów, uklad?w hali i ostatnich uruchomien
             optymalizacji.
           </p>
         </div>
@@ -34,7 +34,7 @@ export const DashboardPage: React.FC = () => {
             Ostatnie optymalizacje
           </p>
           <p className="mt-3 text-3xl font-semibold text-slate-900">7</p>
-          <p className="mt-1 text-xs text-slate-500">3 zakończone sukcesem</p>
+          <p className="mt-1 text-xs text-slate-500">3 zakonczone sukcesem</p>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -43,7 +43,7 @@ export const DashboardPage: React.FC = () => {
           </p>
           <p className="mt-3 text-3xl font-semibold text-slate-900">18%</p>
           <p className="mt-1 text-xs text-slate-500">
-            względem layoutów wejściowych
+            wzgledem layout?w wejsciowych
           </p>
         </div>
       </section>
@@ -53,7 +53,7 @@ export const DashboardPage: React.FC = () => {
           <div className="flex items-center justify-between gap-2">
             <div>
               <h2 className="text-sm font-semibold text-slate-900">
-                Oś czasu optymalizacji
+                Os czasu optymalizacji
               </h2>
               <p className="text-xs text-slate-500">
                 Ostatnie uruchomienia algorytmów SLP / CORELAP / CRAFT.
@@ -62,12 +62,12 @@ export const DashboardPage: React.FC = () => {
             <select className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700">
               <option>Ostatnie 7 dni</option>
               <option>Ostatnie 30 dni</option>
-              <option>Cały okres</option>
+              <option>Caly okres</option>
             </select>
           </div>
 
           <div className="mt-4 flex h-52 items-center justify-center rounded-lg border border-dashed border-slate-200 text-xs text-slate-400">
-            Wykres placeholder – tutaj wejdzie chart z przebiegiem wartości
+            Wykres placeholder ? tutaj wejdzie chart z przebiegiem wartosci
             funkcji celu w kolejnych iteracjach.
           </div>
         </div>
@@ -79,19 +79,19 @@ export const DashboardPage: React.FC = () => {
           <ul className="mt-3 space-y-2 text-sm">
             <li className="flex items-center justify-between gap-2">
               <span className="truncate text-slate-800">
-                Hala montażu A – wariant 3
+                Hala montażu A ? wariant 3
               </span>
               <span className="text-xs text-slate-400">2 godz. temu</span>
             </li>
             <li className="flex items-center justify-between gap-2">
               <span className="truncate text-slate-800">
-                Linia pakowania – optymalizacja przejść
+                Linia pakowania ? optymalizacja przejsc
               </span>
               <span className="text-xs text-slate-400">wczoraj</span>
             </li>
             <li className="flex items-center justify-between gap-2">
               <span className="truncate text-slate-800">
-                Hala magazynowa – nowy layout
+                Hala magazynowa ? nowy layout
               </span>
               <span className="text-xs text-slate-400">3 dni temu</span>
             </li>
@@ -120,14 +120,14 @@ export const DashboardPage: React.FC = () => {
                 <td className="py-1 pr-2">Hala montażu A</td>
                 <td className="py-1 pr-2">Wariant 3</td>
                 <td className="py-1 text-right text-slate-500">
-                  Zmiana pozycji stanowisk 4–6
+                  Zmiana pozycji stanowisk 4?6
                 </td>
               </tr>
               <tr className="border-t border-slate-100">
                 <td className="py-1 pr-2">Linia pakowania</td>
                 <td className="py-1 pr-2">Optymalizacja 2</td>
                 <td className="py-1 text-right text-slate-500">
-                  Aktualizacja przepływów
+                  Aktualizacja przeplyw?w
                 </td>
               </tr>
             </tbody>
@@ -141,19 +141,19 @@ export const DashboardPage: React.FC = () => {
           <ul className="mt-3 space-y-2 text-xs">
             <li className="flex flex-col rounded-lg border border-slate-100 bg-slate-50 p-2">
               <span className="font-medium text-slate-800">
-                Minimalizacja odległości transportu
+                Minimalizacja odleglosci transportu
               </span>
               <span className="text-slate-500">
-                Wagi przepływów wysokie, ograniczenia na minimalne odległości
-                między gniazdami.
+                Wagi przeplyw?w wysokie, ograniczenia na minimalne odleglosci
+                miedzy gniazdami.
               </span>
             </li>
             <li className="flex flex-col rounded-lg border border-slate-100 bg-slate-50 p-2">
               <span className="font-medium text-slate-800">
-                Maksymalna elastyczność layoutu
+                Maksymalna elastycznosc layoutu
               </span>
               <span className="text-slate-500">
-                Priorytet dla możliwości rozbudowy i rearanżacji stanowisk.
+                Priorytet dla mozliwosci rozbudowy i rearanzacji stanowisk.
               </span>
             </li>
           </ul>

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+﻿import { useState, type ReactNode } from "react";
 
 type Tab = { key: string; label: string; content: ReactNode };
 

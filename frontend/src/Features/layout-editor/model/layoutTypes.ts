@@ -1,4 +1,4 @@
-export type LayoutElementType =
+﻿export type LayoutElementType =
   | "department"
   | "workstation"
   | "storage"
@@ -16,17 +16,25 @@ export interface LayoutElement {
   height: number;
   rotation: number;
   locked?: boolean;
-  machineId?: string; // tylko dla type: "machine"
+  machineId?: string;
 }
 
 export interface TransportPath {
   id: string;
   name: string;
-  points: number[]; // [x1, y1, x2, y2, ...]
+  points: number[];
   width: number;
+}
+export interface LayoutScale {
+  metersPerGridCell: number;
 }
 
 export interface HallBoundary {
-  points: number[]; // [x1, y1, x2, y2, ...]
+  points: number[];
   closed: boolean;
+}
+
+export interface HallOutlineDtoV2 {
+  boundary: HallBoundary;
+  scale?: LayoutScale;
 }

@@ -1,12 +1,12 @@
-import { useIncidentsStore } from "../../../../entities/incidents/model/useIncidentsStore";
+﻿import { useIncidentsStore } from "../../../../entities/incidents/model/useIncidentsStore";
 
 const labels: Record<string, string> = {
   created: "Utworzono",
   status_changed: "Zmiana statusu",
   assigned: "Przypisano",
-  work_scheduled: "Zaplano­wano serwis",
+  work_scheduled: "Zaplano?wano serwis",
   note: "Notatka",
-  attachment_added: "Dodano załącznik",
+  attachment_added: "Dodano zalacznik",
   resolved: "Zamknięto",
 };
 
@@ -45,7 +45,7 @@ export function TimelinePanel({ incidentId }: { incidentId: string }) {
         </li>
       ))}
       {events.length === 0 && (
-        <li className="text-sm text-slate-500">Brak zdarzeń.</li>
+        <li className="text-sm text-slate-500">Brak zdarzen.</li>
       )}
     </ul>
   );

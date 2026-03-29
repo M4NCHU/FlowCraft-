@@ -1,4 +1,4 @@
-import { useRef } from "react";
+﻿import { useRef } from "react";
 import { useIncidentsStore } from "../../../../entities/incidents/model/useIncidentsStore";
 
 export function AttachmentsPanel({ incidentId }: { incidentId: string }) {
@@ -35,7 +35,7 @@ export function AttachmentsPanel({ incidentId }: { incidentId: string }) {
             <div>
               <div className="font-medium">{a.name}</div>
               <div className="text-xs text-slate-500">
-                {a.size ? `${Math.round(a.size / 1024)} KB` : "—"} •{" "}
+                {a.size ? `${Math.round(a.size / 1024)} KB` : "?"} ?{" "}
                 {new Date(a.uploadedAt).toLocaleString()}
               </div>
             </div>
@@ -54,7 +54,7 @@ export function AttachmentsPanel({ incidentId }: { incidentId: string }) {
           </li>
         ))}
         {(!incident.attachments || incident.attachments.length === 0) && (
-          <li className="text-sm text-slate-500">Brak załączników.</li>
+          <li className="text-sm text-slate-500">Brak zalacznik?w.</li>
         )}
       </ul>
     </div>

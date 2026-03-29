@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { useEditorState } from "../../model/useEditorState";
 import { useMachinesStore } from "../../../../entities/machines/model/useMachinesStore";
 import { Link } from "react-router-dom";
@@ -16,7 +16,7 @@ export const MachineDetailsModal: React.FC = () => {
       <div className="w-full max-w-lg rounded-lg bg-white shadow-xl">
         <div className="flex items-center justify-between border-b px-4 py-2">
           <h3 className="text-sm font-semibold">
-            Szczegóły maszyny {m ? `— ${m.name}` : ""}
+            Szczegóły maszyny {m ? `? ${m.name}` : ""}
           </h3>
           <button
             onClick={() => setOpenMachineDetails(null)}
@@ -32,7 +32,7 @@ export const MachineDetailsModal: React.FC = () => {
                 <span className="text-slate-500">Nazwa:</span> {m.name}
               </div>
               <div>
-                <span className="text-slate-500">Model:</span> {m.model ?? "—"}
+                <span className="text-slate-500">Model:</span> {m.model ?? "?"}
               </div>
               <div>
                 <span className="text-slate-500">Status:</span> {m.status}

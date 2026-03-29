@@ -1,4 +1,4 @@
-import type { LayoutElementType } from "./layoutTypes";
+﻿import type { LayoutElementType } from "./layoutTypes";
 
 export type ToolId = LayoutElementType | "road" | "boundary";
 
@@ -21,7 +21,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     id: "department",
     label: "Gniazdo / dział",
-    description: "Większy obszar funkcjonalny (gniazdo produkcyjne).",
+    description: "Wiekszy obszar funkcjonalny (gniazdo produkcyjne).",
     shortcut: "G",
     defaultSize: { width: 6, height: 4 },
   },
@@ -35,14 +35,14 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     id: "storage",
     label: "Magazyn / bufor",
-    description: "Strefa składowania lub bufor międzyoperacyjny.",
+    description: "Strefa skladowania lub bufor miedzyoperacyjny.",
     shortcut: "M",
     defaultSize: { width: 4, height: 3 },
   },
   {
     id: "transport",
     label: "Strefa transportowa",
-    description: "Obszar korytarza transportowego jako prostokąt.",
+    description: "Obszar korytarza transportowego jako prostokat.",
     shortcut: "T",
     defaultSize: { width: 6, height: 1 },
   },
@@ -55,14 +55,14 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     id: "machine",
     label: "Maszyna (ikona)",
-    description: "Dodaj maszynę z listy i umieść ją na planie.",
+    description: "Dodaj maszynę z listy i umiesc ja na planie.",
     shortcut: "I",
     defaultSize: { width: 2, height: 2 },
   },
   {
     id: "road",
     label: "Droga transportowa",
-    description: "Rysowanie dróg jako linii na siatce.",
+    description: "Rysowanie dr?g jako linii na siatce.",
     shortcut: "D",
     defaultSize: { width: 0, height: 0 },
   },

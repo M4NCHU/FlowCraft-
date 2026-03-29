@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useIncidentsStore } from "../../../../entities/incidents/model/useIncidentsStore";
 
 export function CommentsPanel({ incidentId }: { incidentId: string }) {
@@ -27,7 +27,7 @@ export function CommentsPanel({ incidentId }: { incidentId: string }) {
             className="rounded-md border border-slate-200 bg-white p-3"
           >
             <div className="mb-1 text-xs text-slate-500">
-              {c.author} • {new Date(c.createdAt).toLocaleString()}
+              {c.author} ? {new Date(c.createdAt).toLocaleString()}
             </div>
             <div className="text-sm text-slate-800 whitespace-pre-wrap">
               {c.message}
@@ -44,14 +44,14 @@ export function CommentsPanel({ incidentId }: { incidentId: string }) {
           value={msg}
           onChange={(e) => setMsg(e.target.value)}
           rows={3}
-          placeholder="Dodaj komentarz…"
+          placeholder="Dodaj komentarz?"
           className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-300"
         />
         <button
           type="submit"
           className="h-10 rounded-md bg-slate-900 px-3 text-sm font-medium text-white hover:bg-slate-800"
         >
-          Wyślij
+          Wyslij
         </button>
       </form>
     </div>

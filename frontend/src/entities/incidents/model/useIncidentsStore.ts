@@ -1,4 +1,4 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 import { nanoid } from "nanoid";
 
 export type IncidentStatus = "open" | "in_progress" | "resolved";
@@ -29,7 +29,7 @@ export type IncidentAttachment = {
   id: string;
   name: string;
   size?: number;
-  url?: string; // w POC może być pusty; w prod -> link do backendu
+  url?: string; // w POC moze byc pusty; w prod -> link do backendu
   uploadedAt: string;
 };
 
@@ -92,7 +92,7 @@ export const useIncidentsStore = create<State>((set) => ({
     {
       id: "i-1",
       title: "Wibracje na osi X",
-      description: "Podejrzenie luzu na łożysku.",
+      description: "Podejrzenie luzu na lozysku.",
       machineId: "m-2",
       status: "in_progress",
       severity: "medium",
@@ -105,7 +105,7 @@ export const useIncidentsStore = create<State>((set) => ({
         {
           id: nanoid(),
           author: "tech01",
-          message: "Zamówione łożysko 6204 2RS.",
+          message: "Zam²wione łożysko 6204 2RS.",
           createdAt: now(),
         },
       ],

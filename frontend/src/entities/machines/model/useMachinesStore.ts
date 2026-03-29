@@ -1,4 +1,4 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 import { nanoid } from "nanoid";
 
 export type MachineStatus = "operational" | "maintenance" | "down";
@@ -29,7 +29,7 @@ export const useMachinesStore = create<State>((set, get) => ({
       status: "maintenance",
       model: "NLX 2500",
     },
-    { id: "m-3", name: "Fanuc Robodrill", status: "down", model: "α-D21MiB5" },
+    { id: "m-3", name: "Fanuc Robodrill", status: "down", model: "Î±-D21MiB5" },
   ],
   getById: (id) => get().machines.find((x) => x.id === id),
   addMachine: ({ name, status, model }) =>
