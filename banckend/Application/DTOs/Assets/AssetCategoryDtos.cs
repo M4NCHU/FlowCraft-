@@ -32,6 +32,7 @@ public sealed class AssetCategoryDto
 
 public sealed class AssetCategoryParameterRequest
 {
+    public Guid? Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Code { get; set; } = string.Empty;
     public AssetParameterType Type { get; set; } = AssetParameterType.Text;

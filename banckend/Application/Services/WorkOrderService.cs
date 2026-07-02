@@ -78,6 +78,7 @@ public sealed class WorkOrderService : IWorkOrderService
         workOrder.Description = Require(request.Description, nameof(request.Description));
         workOrder.Type = request.Type;
         workOrder.Priority = request.Priority;
+        workOrder.AssetId = request.AssetId;
         workOrder.AssignedToEmployeeId = request.AssignedToEmployeeId;
         workOrder.DueAtUtc = request.DueAtUtc;
         workOrder.EstimatedMinutes = request.EstimatedMinutes;

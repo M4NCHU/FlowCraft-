@@ -20,6 +20,9 @@ public class EmployeeSkill
     public Guid AssetCategoryId { get; set; }
     public AssetCategory AssetCategory { get; set; } = null!;
 
+    public Guid? AssetId { get; set; }
+    public Asset? Asset { get; set; }
+
     public EmployeeSkillLevel SkillLevel { get; set; } = EmployeeSkillLevel.Beginner;
     public bool CanOperate { get; set; }
     public bool CanMaintain { get; set; }

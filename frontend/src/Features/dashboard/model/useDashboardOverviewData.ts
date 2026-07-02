@@ -19,13 +19,10 @@ import { AssetType } from "../../machines/api/contracts";
 import { assetsApi } from "../../machines/api/assetsApi";
 import { maintenancePlansApi } from "../../maintenance/api/maintenancePlansApi";
 import type { MaintenancePlanDto } from "../../maintenance/api/contracts";
-import { projectsApi } from "../../projects/api/projectsApi";
-import type { ProjectSummary } from "../../projects/types";
 import type { WorkOrderDto } from "../../work-orders/api/contracts";
 import { workOrdersApi } from "../../work-orders/api/workOrdersApi";
 
 type DashboardState = {
-  projects: ProjectSummary[];
   departments: DepartmentDto[];
   halls: HallSummary[];
   assets: AssetListItemDto[];
@@ -41,7 +38,6 @@ type DashboardState = {
 };
 
 const initialState: DashboardState = {
-  projects: [],
   departments: [],
   halls: [],
   assets: [],
@@ -67,7 +63,6 @@ export function useDashboardOverviewData() {
     }));
 
     const results = await Promise.allSettled([
-      projectsApi.list({ signal }),
       departmentsApi.list({ includeInactive: false, signal }),
       getHalls(signal),
       assetsApi.list({ signal }),
@@ -87,7 +82,6 @@ export function useDashboardOverviewData() {
     if (signal?.aborted) return;
 
     const [
-      projectsResult,
       departmentsResult,
       hallsResult,
       assetsResult,
@@ -103,8 +97,6 @@ export function useDashboardOverviewData() {
     const firstRejected = results.find((result) => result.status === "rejected");
 
     setState({
-      projects:
-        projectsResult.status === "fulfilled" ? (projectsResult.value ?? []) : [],
       departments:
         departmentsResult.status === "fulfilled"
           ? (departmentsResult.value ?? [])

@@ -7,6 +7,10 @@ public sealed class EmployeeSkillDto
     public Guid Id { get; set; }
     public Guid AssetCategoryId { get; set; }
     public string AssetCategoryName { get; set; } = string.Empty;
+    public Guid? AssetId { get; set; }
+    public string? AssetName { get; set; }
+    public bool IsMachineSpecific { get; set; }
+    public string ScopeLabel { get; set; } = string.Empty;
     public int AssetType { get; set; }
     public EmployeeSkillLevel SkillLevel { get; set; }
     public bool CanOperate { get; set; }
@@ -15,6 +19,16 @@ public sealed class EmployeeSkillDto
     public string? Notes { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
+}
+
+public sealed class EmployeeAssignedAssetDto
+{
+    public Guid AssetId { get; set; }
+    public string AssetName { get; set; } = string.Empty;
+    public string AssetCode { get; set; } = string.Empty;
+    public string? AssetCategoryName { get; set; }
+    public DateTime AssignedAtUtc { get; set; }
+    public DateTime? DueBackAtUtc { get; set; }
 }
 
 public sealed class EmployeeDto
@@ -35,6 +49,7 @@ public sealed class EmployeeDto
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
     public IReadOnlyList<EmployeeSkillDto> Skills { get; set; } = Array.Empty<EmployeeSkillDto>();
+    public IReadOnlyList<EmployeeAssignedAssetDto> AssignedAssets { get; set; } = Array.Empty<EmployeeAssignedAssetDto>();
 }
 
 public sealed class CreateEmployeeRequest
@@ -67,6 +82,7 @@ public sealed class UpdateEmployeeRequest
 public sealed class UpsertEmployeeSkillRequest
 {
     public Guid AssetCategoryId { get; set; }
+    public Guid? AssetId { get; set; }
     public EmployeeSkillLevel SkillLevel { get; set; } = EmployeeSkillLevel.Beginner;
     public bool CanOperate { get; set; }
     public bool CanMaintain { get; set; }

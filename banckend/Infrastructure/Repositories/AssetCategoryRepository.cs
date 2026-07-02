@@ -20,10 +20,8 @@ public sealed class AssetCategoryRepository : IAssetCategoryRepository
         bool includeInactive = false,
         CancellationToken cancellationToken = default)
     {
-        var query = _db.AssetCategories
+        IQueryable<AssetCategory> query = _db.AssetCategories
             .AsNoTracking()
-            .Include(x => x.Parameters)
-            .Include(x => x.Assets)
             .Where(x => x.TenantId == tenantId);
 
         if (assetType.HasValue)
@@ -31,6 +29,8 @@ public sealed class AssetCategoryRepository : IAssetCategoryRepository
 
         if (!includeInactive)
             query = query.Where(x => x.IsActive);
+
+        query = ApplyIncludes(query, includeParameters: true, includeAssets: true);
 
         return await query
             .OrderBy(x => x.Name)
@@ -47,13 +47,21 @@ public sealed class AssetCategoryRepository : IAssetCategoryRepository
         IQueryable<AssetCategory> query = _db.AssetCategories
             .Where(x => x.TenantId == tenantId);
 
-        if (includeParameters)
-            query = query.Include(x => x.Parameters);
-
-        if (includeAssets)
-            query = query.Include(x => x.Assets);
+        query = ApplyIncludes(query, includeParameters, includeAssets);
 
         return query.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<AssetCategoryParameter>> GetParametersAsync(
+        Guid tenantId,
+        Guid categoryId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _db.AssetCategoryParameters
+            .Where(x => x.AssetCategoryId == categoryId && x.AssetCategory.TenantId == tenantId)
+            .OrderBy(x => x.DisplayOrder)
+            .ThenBy(x => x.Name)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<bool> CodeExistsAsync(
@@ -95,9 +103,32 @@ public sealed class AssetCategoryRepository : IAssetCategoryRepository
     public Task AddAsync(AssetCategory category, CancellationToken cancellationToken = default)
         => _db.AssetCategories.AddAsync(category, cancellationToken).AsTask();
 
+    public Task AddParameterAsync(AssetCategoryParameter parameter, CancellationToken cancellationToken = default)
+        => _db.AssetCategoryParameters.AddAsync(parameter, cancellationToken).AsTask();
+
+    public void RemoveParameter(AssetCategoryParameter parameter)
+        => _db.AssetCategoryParameters.Remove(parameter);
+
     public Task UpdateAsync(AssetCategory category, CancellationToken cancellationToken = default)
     {
         _db.AssetCategories.Update(category);
         return Task.CompletedTask;
+    }
+
+    private static IQueryable<AssetCategory> ApplyIncludes(
+        IQueryable<AssetCategory> query,
+        bool includeParameters,
+        bool includeAssets)
+    {
+        if (includeParameters)
+            query = query.Include(x => x.Parameters);
+
+        if (includeAssets)
+            query = query.Include(x => x.Assets);
+
+        if (includeParameters && includeAssets)
+            query = query.AsSplitQuery();
+
+        return query;
     }
 }

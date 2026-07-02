@@ -120,6 +120,28 @@ public sealed class AssetsController : ControllerBase
         }
     }
 
+    [HttpDelete("{id:guid}/placement")]
+    [Authorize(Roles = $"{Roles.Admin},{Roles.Manager},{Roles.Editor}")]
+    public async Task<IActionResult> RemovePlacement(Guid id, CancellationToken ct)
+    {
+        var tenantId = User.GetTenantId();
+
+        try
+        {
+            await _service.RemovePlacementAsync(tenantId, id, ct);
+
+            _logger.LogInformation("Asset removed from hall map. tenantId={TenantId}, assetId={AssetId}",
+                tenantId,
+                id);
+
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpPost("{id:guid}/assignments")]
     [Authorize(Roles = $"{Roles.Admin},{Roles.Manager},{Roles.Editor}")]
     public async Task<ActionResult<AssetAssignmentDto>> Assign(Guid id, [FromBody] AssignAssetRequest request, CancellationToken ct)

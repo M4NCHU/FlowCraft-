@@ -17,9 +17,16 @@ public interface IAssetCategoryRepository
         bool includeAssets = true,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<AssetCategoryParameter>> GetParametersAsync(
+        Guid tenantId,
+        Guid categoryId,
+        CancellationToken cancellationToken = default);
+
     Task<bool> CodeExistsAsync(Guid tenantId, string code, Guid? excludeId = null, CancellationToken cancellationToken = default);
     Task<bool> NameExistsAsync(Guid tenantId, string name, AssetType assetType, Guid? excludeId = null, CancellationToken cancellationToken = default);
 
     Task AddAsync(AssetCategory category, CancellationToken cancellationToken = default);
+    Task AddParameterAsync(AssetCategoryParameter parameter, CancellationToken cancellationToken = default);
+    void RemoveParameter(AssetCategoryParameter parameter);
     Task UpdateAsync(AssetCategory category, CancellationToken cancellationToken = default);
 }

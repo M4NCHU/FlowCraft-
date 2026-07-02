@@ -1,10 +1,14 @@
 using System;
+using FlowCraft.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace Infrastructure.Migrations
 {
+    [DbContext(typeof(FlowCraftDbContext))]
+    [Migration("20260329193000_MaintenanceSchedules")]
     /// <inheritdoc />
     public partial class MaintenanceSchedules : Migration
     {

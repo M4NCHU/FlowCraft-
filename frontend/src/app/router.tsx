@@ -1,8 +1,9 @@
-﻿import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import { appShellRoutes } from "./appShellRoutes";
 import { RootLayout } from "./layout/RootLayout";
 import { LoginPage } from "../Features/auth/ui/LoginPage/LoginPage";
 import { RequireAuth } from "../Features/auth/ui/LoginPage/RequireAuth";
+import { NotFoundPage } from "../pages/NotFoundPage";
 
 export const router = createBrowserRouter([
   {
@@ -16,16 +17,21 @@ export const router = createBrowserRouter([
         <RootLayout />
       </RequireAuth>
     ),
-    children: appShellRoutes.map((route) =>
-      route.index
-        ? {
-            index: true,
-            element: route.element,
-          }
-        : {
-            path: route.path,
-            element: route.element,
-          }
-    ),
+    children: appShellRoutes
+      .map((route) =>
+        route.index
+          ? {
+              index: true,
+              element: route.element,
+            }
+          : {
+              path: route.path,
+              element: route.element,
+            }
+      )
+      .concat({
+        path: "*",
+        element: <NotFoundPage />,
+      }),
   },
 ]);

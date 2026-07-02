@@ -18,7 +18,6 @@ export function AddHallDialogAscii({
 }: Props) {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
-  const [areaSqMeters, setAreaSqMeters] = useState<number>(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,7 +39,6 @@ export function AddHallDialogAscii({
         code: code.trim(),
         description: null,
         outlineJson: "[]",
-        areaSqMeters: Number.isFinite(areaSqMeters) ? areaSqMeters : 0,
       };
 
       const created = await createHall(payload);
@@ -60,12 +58,12 @@ export function AddHallDialogAscii({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b px-4 py-3">
+      <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
           <div>
-            <h3 className="text-sm font-semibold text-slate-900">Nowa hala</h3>
-            <p className="mt-0.5 text-xs text-slate-500">
-              Po utworzeniu przejdziesz do edytora layoutu.
+            <h3 className="text-base font-semibold text-slate-900">Nowa hala</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Po zapisaniu od razu otworzy sie edytor layoutu dla nowej hali.
             </p>
           </div>
           <button
@@ -77,51 +75,61 @@ export function AddHallDialogAscii({
           </button>
         </div>
 
-        <div className="px-4 py-3">
-          <div className="grid gap-3 sm:grid-cols-2">
+        <div className="px-5 py-4">
+          <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            Uzupelnij podstawowe dane hali. Obrys narysujesz w edytorze, a powierzchnia policzy sie automatycznie z wymiarow layoutu.
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-600">Nazwa</span>
+              <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                Nazwa hali
+              </span>
               <input
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 disabled={disabled}
                 autoFocus
               />
+              <span className="text-[11px] text-slate-500">
+                Nazwa widoczna na liscie hal i w edytorze.
+              </span>
             </label>
 
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-600">Kod</span>
+              <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                Kod hali
+              </span>
               <input
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
                 value={code}
                 onChange={(event) => setCode(event.target.value)}
                 disabled={disabled}
               />
+              <span className="text-[11px] text-slate-500">
+                Skrot uzywany w kartach, raportach i na planie.
+              </span>
             </label>
 
-            <label className="flex flex-col gap-1 sm:col-span-2">
-              <span className="text-xs text-slate-600">Powierzchnia [m²]</span>
-              <input
-                type="number"
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                value={areaSqMeters}
-                onChange={(event) => setAreaSqMeters(Number(event.target.value))}
-                disabled={disabled}
-                min={0}
-                step={0.01}
-              />
-            </label>
+            <div className="flex flex-col gap-1 sm:col-span-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                Powierzchnia hali
+              </span>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600">
+                Wyliczana automatycznie po narysowaniu obrysu hali w edytorze.
+              </div>
+            </div>
           </div>
 
           {error ? (
-            <div className="mt-3 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
+            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
               {error}
             </div>
           ) : null}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t px-4 py-3">
+        <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-5 py-4">
           <button
             onClick={onClose}
             className="rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"

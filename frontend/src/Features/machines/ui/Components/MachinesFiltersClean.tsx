@@ -41,8 +41,8 @@ export function MachinesFiltersClean({
   const sortId = useId();
 
   return (
-    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-      <div className="flex flex-1 flex-col gap-2 md:flex-row">
+    <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+      <div className="grid flex-1 gap-2 md:grid-cols-2 xl:grid-cols-[minmax(18rem,1.15fr)_auto_auto]">
         <div className="flex items-center gap-2 md:w-80">
           <label htmlFor={qId} className="text-xs text-slate-500">
             Szukaj
@@ -102,7 +102,7 @@ export function MachinesFiltersClean({
         </div>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-end xl:self-center">
         <button
           onClick={onReset}
           className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs hover:bg-slate-50"

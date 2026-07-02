@@ -1,6 +1,5 @@
 ﻿using FlowCraft.Interfaces.Abstractions;
 using FlowCraft.Domain.Projects;
-using FlowCraft.Infrastructure.Persistence;
 using Microsoft.Extensions.Logging;
 
 namespace FlowCraft.Application.Projects

@@ -27,7 +27,7 @@ export const RootLayout: React.FC = () => {
               <div className="relative hidden max-w-xs flex-1 md:block">
                 <input
                   type="text"
-                  placeholder="Szukaj projektu, hali, layoutu..."
+                  placeholder="Szukaj hali, maszyny, materialu lub layoutu..."
                   className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-300"
                 />
               </div>

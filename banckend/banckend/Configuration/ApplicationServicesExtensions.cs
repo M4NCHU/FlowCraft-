@@ -28,6 +28,9 @@ namespace FlowCraft.Api.Configuration
             services.AddScoped<IWorkOrderRepository, WorkOrderRepository>();
             services.AddScoped<IMaintenancePlanRepository, MaintenancePlanRepository>();
             services.AddScoped<IImprovementIdeaRepository, ImprovementIdeaRepository>();
+            services.AddScoped<IInventoryCategoryRepository, InventoryCategoryRepository>();
+            services.AddScoped<IInventoryItemRepository, InventoryItemRepository>();
+            services.AddScoped<IInventoryProcurementOrderRepository, InventoryProcurementOrderRepository>();
 
             services.AddScoped<ITenantService, TenantService>();
             services.AddScoped<IProjectService, ProjectService>();
@@ -40,6 +43,7 @@ namespace FlowCraft.Api.Configuration
             services.AddScoped<IWorkOrderService, WorkOrderService>();
             services.AddScoped<IMaintenancePlanService, MaintenancePlanService>();
             services.AddScoped<IImprovementIdeaService, ImprovementIdeaService>();
+            services.AddScoped<IInventoryService, InventoryService>();
 
             return services;
         }

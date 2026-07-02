@@ -14,42 +14,42 @@ type Props = {
 
 export function HallsFilters(props: Props) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="grid w-full gap-2 lg:grid-cols-[minmax(16rem,1fr)_13rem_auto_auto]">
       <input
         value={props.q}
         onChange={(event) => props.onQChange(event.target.value)}
-        placeholder="Szukaj (nazwa/kod)..."
+        placeholder="Szukaj hali po nazwie lub kodzie..."
         disabled={props.disabled}
-        className="h-9 w-56 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-slate-300"
+        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-slate-300"
       />
 
       <select
         value={props.sortBy}
         onChange={(event) => props.onSortByChange(event.target.value as HallsSortKey)}
         disabled={props.disabled}
-        className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-800"
+        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800"
       >
-        <option value="name">Nazwa</option>
-        <option value="code">Kod</option>
-        <option value="areaSqMeters">Powierzchnia</option>
-        <option value="sectionsCount">Sekcje</option>
+        <option value="name">Sortuj: nazwa</option>
+        <option value="code">Sortuj: kod</option>
+        <option value="areaSqMeters">Sortuj: powierzchnia</option>
+        <option value="sectionsCount">Sortuj: sekcje</option>
       </select>
 
       <button
         type="button"
         onClick={props.onToggleDir}
         disabled={props.disabled}
-        className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-800 hover:bg-slate-50 disabled:opacity-50"
-        title="Zmień kierunek sortowania"
+        className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 transition hover:bg-slate-50 disabled:opacity-50"
+        title="Zmien kierunek sortowania"
       >
-        {props.dir === "asc" ? "Rosnąco" : "Malejąco"}
+        {props.dir === "asc" ? "Rosnaco" : "Malejaco"}
       </button>
 
       <button
         type="button"
         onClick={props.onReset}
         disabled={props.disabled}
-        className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+        className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 transition hover:bg-slate-50 disabled:opacity-50"
       >
         Reset
       </button>

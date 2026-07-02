@@ -1,6 +1,5 @@
-﻿import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { PageHeader } from "../../../shared/ui/PageHeader";
 import { toApiError, type ApiError } from "../../../shared/api/httpClient";
 import { departmentsApi } from "../../departments/api/departmentsApi";
 import type { DepartmentDto } from "../../departments/api/contracts";
@@ -48,6 +47,36 @@ const activeStatuses = [
   ImprovementStatus.InProgress,
 ] as const;
 
+type SidePanelMode = "decision" | "board" | "insights";
+
+type MetricTone = "slate" | "emerald" | "sky" | "rose" | "cyan" | "violet";
+type AlertTone = "slate" | "emerald" | "amber" | "rose" | "cyan";
+type SmallMetricTone =
+  | "slate"
+  | "emerald"
+  | "amber"
+  | "rose"
+  | "cyan"
+  | "violet";
+
+type InsightsData = {
+  activeIdeas: ImprovementIdeaDto[];
+  quickWins: ImprovementIdeaDto[];
+  overdueIdeas: ImprovementIdeaDto[];
+  dueSoonIdeas: ImprovementIdeaDto[];
+  implemented: ImprovementIdeaDto[];
+  savingsPotential: number;
+  realizedSavings: number;
+  avgImprovement: number | null;
+  avgTargetAchievement: number | null;
+  recommendedIdeas: ImprovementIdeaDto[];
+  wasteHotspots: {
+    wasteType: number;
+    count: number;
+  }[];
+  implementedHighlights: ImprovementIdeaDto[];
+};
+
 export function LeanIdeasScreen() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [ideas, setIdeas] = useState<ImprovementIdeaDto[]>([]);
@@ -56,9 +85,12 @@ export function LeanIdeasScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ApiError | null>(null);
   const [openAdd, setOpenAdd] = useState(false);
-  const [editingIdea, setEditingIdea] = useState<ImprovementIdeaDto | null>(null);
+  const [editingIdea, setEditingIdea] = useState<ImprovementIdeaDto | null>(
+    null,
+  );
   const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null);
   const [updatingIdeaId, setUpdatingIdeaId] = useState<string | null>(null);
+  const [sidePanelMode, setSidePanelMode] = useState<SidePanelMode>("decision");
   const createFromQuery = searchParams.get("create") === "1";
 
   const loadData = async (signal?: AbortSignal) => {
@@ -74,17 +106,23 @@ export function LeanIdeasScreen() {
     if (signal?.aborted) return;
 
     const [ideasResult, departmentsResult, employeesResult] = results;
-    const firstRejected = results.find((result) => result.status === "rejected");
+    const firstRejected = results.find(
+      (result) => result.status === "rejected",
+    );
 
     const nextIdeas =
       ideasResult.status === "fulfilled" ? (ideasResult.value ?? []) : [];
 
     setIdeas(nextIdeas);
     setDepartments(
-      departmentsResult.status === "fulfilled" ? departmentsResult.value ?? [] : []
+      departmentsResult.status === "fulfilled"
+        ? (departmentsResult.value ?? [])
+        : [],
     );
     setEmployees(
-      employeesResult.status === "fulfilled" ? employeesResult.value ?? [] : []
+      employeesResult.status === "fulfilled"
+        ? (employeesResult.value ?? [])
+        : [],
     );
     setSelectedIdeaId((current) => current ?? nextIdeas[0]?.id ?? null);
     setLoading(false);
@@ -92,9 +130,9 @@ export function LeanIdeasScreen() {
       firstRejected
         ? toApiError(
             firstRejected.reason,
-            "Nie udało się załadować tablicy usprawnień."
+            "Nie udało się załadować tablicy usprawnień.",
           )
-        : null
+        : null,
     );
   };
 
@@ -111,39 +149,51 @@ export function LeanIdeasScreen() {
     }
   }, [createFromQuery, editingIdea]);
 
-  const insights = useMemo(() => {
+  const insights = useMemo<InsightsData>(() => {
     const activeIdeas = ideas.filter(
       (idea) =>
         idea.status !== ImprovementStatus.Implemented &&
-        idea.status !== ImprovementStatus.Rejected
+        idea.status !== ImprovementStatus.Rejected,
     );
+
     const quickWins = activeIdeas.filter((idea) => idea.quickWin);
-    const implemented = ideas.filter(
-      (idea) => idea.status === ImprovementStatus.Implemented
+    const overdueIdeas = activeIdeas.filter((idea) => idea.isOverdue);
+    const dueSoonIdeas = activeIdeas.filter(
+      (idea) => !idea.isOverdue && idea.isDueSoon,
     );
+
+    const implemented = ideas.filter(
+      (idea) => idea.status === ImprovementStatus.Implemented,
+    );
+
     const savingsPotential = activeIdeas.reduce(
       (sum, idea) => sum + (idea.estimatedSavingsPerMonth ?? 0),
-      0
+      0,
     );
+
     const realizedSavings = implemented.reduce(
       (sum, idea) => sum + (idea.implementedSavingsPerMonth ?? 0),
-      0
+      0,
     );
+
     const measuredImplemented = implemented.filter(
-      (idea) => idea.actualValue != null && idea.improvementPercent != null
+      (idea) => idea.actualValue != null && idea.improvementPercent != null,
     );
+
     const avgImprovement = measuredImplemented.length
       ? measuredImplemented.reduce(
           (sum, idea) => sum + (idea.improvementPercent ?? 0),
-          0
+          0,
         ) / measuredImplemented.length
       : null;
+
     const avgTargetAchievement = measuredImplemented.length
       ? measuredImplemented.reduce(
           (sum, idea) => sum + (idea.targetAchievementPercent ?? 0),
-          0
+          0,
         ) / measuredImplemented.length
       : null;
+
     const recommendedIdeas = activeIdeas
       .slice()
       .sort((a, b) => {
@@ -154,12 +204,13 @@ export function LeanIdeasScreen() {
         return Date.parse(a.createdAtUtc) - Date.parse(b.createdAtUtc);
       })
       .slice(0, 4);
+
     const wasteHotspots = Object.entries(
       activeIdeas.reduce<Record<string, number>>((acc, idea) => {
         const key = String(idea.wasteType);
         acc[key] = (acc[key] ?? 0) + 1;
         return acc;
-      }, {})
+      }, {}),
     )
       .map(([wasteType, count]) => ({
         wasteType: Number(wasteType),
@@ -167,6 +218,7 @@ export function LeanIdeasScreen() {
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 4);
+
     const implementedHighlights = implemented
       .filter((idea) => idea.actualValue != null || idea.resultSummary)
       .slice()
@@ -176,6 +228,8 @@ export function LeanIdeasScreen() {
     return {
       activeIdeas,
       quickWins,
+      overdueIdeas,
+      dueSoonIdeas,
       implemented,
       savingsPotential,
       realizedSavings,
@@ -195,14 +249,13 @@ export function LeanIdeasScreen() {
           .filter((idea) => idea.status === status)
           .sort((a, b) => b.priorityScore - a.priorityScore),
       })),
-    [ideas]
+    [ideas],
   );
 
   const selectedIdea = useMemo(
     () => ideas.find((idea) => idea.id === selectedIdeaId) ?? null,
-    [ideas, selectedIdeaId]
+    [ideas, selectedIdeaId],
   );
-
 
   const createPrefill = useMemo(() => {
     if (!createFromQuery) return null;
@@ -220,7 +273,9 @@ export function LeanIdeasScreen() {
       dueDateUtc: searchParams.get("dueDateUtc") ?? undefined,
       baselineMetricName: searchParams.get("metricName") ?? "",
       metricUnit: searchParams.get("metricUnit") ?? "",
-      estimatedSavingsPerMonth: estimatedSavings ? Number(estimatedSavings) : null,
+      estimatedSavingsPerMonth: estimatedSavings
+        ? Number(estimatedSavings)
+        : null,
       baselineValue: baselineValue ? Number(baselineValue) : null,
       targetValue: targetValue ? Number(targetValue) : null,
       notes: searchParams.get("notes") ?? "",
@@ -231,6 +286,7 @@ export function LeanIdeasScreen() {
     if (!createFromQuery) return;
 
     const next = new URLSearchParams(searchParams);
+
     [
       "create",
       "title",
@@ -246,28 +302,32 @@ export function LeanIdeasScreen() {
       "targetValue",
       "notes",
     ].forEach((key) => next.delete(key));
+
     setSearchParams(next, { replace: true });
   };
+
   const handleCreated = (idea: ImprovementIdeaDto) => {
     setIdeas((prev) =>
       [idea, ...prev].sort(
-        (a, b) => Date.parse(b.updatedAtUtc) - Date.parse(a.updatedAtUtc)
-      )
+        (a, b) => Date.parse(b.updatedAtUtc) - Date.parse(a.updatedAtUtc),
+      ),
     );
     setSelectedIdeaId(idea.id);
+    setSidePanelMode("decision");
     clearCreateSearch();
   };
 
   const handleUpdated = (updatedIdea: ImprovementIdeaDto) => {
     setIdeas((prev) =>
-      prev.map((idea) => (idea.id === updatedIdea.id ? updatedIdea : idea))
+      prev.map((idea) => (idea.id === updatedIdea.id ? updatedIdea : idea)),
     );
     setSelectedIdeaId(updatedIdea.id);
+    setSidePanelMode("decision");
   };
 
   const handleStatusChange = async (
     ideaId: string,
-    status: ImprovementStatus
+    status: ImprovementStatus,
   ) => {
     setUpdatingIdeaId(ideaId);
 
@@ -283,557 +343,465 @@ export function LeanIdeasScreen() {
 
   return (
     <>
-      <PageHeader
-        title="Lean i kaizen"
-        extra={
-          <div className="flex flex-wrap items-center gap-3">
-            <Link
-              to="/departments"
-              className="rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
-            >
-              Działy
-            </Link>
-            <Link
-              to="/employees"
-              className="rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
-            >
-              Właściciele
-            </Link>
-            <button
-              onClick={() => void loadData()}
-              className="rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
-            >
-              Odśwież
-            </button>
-            <button
-              onClick={() => {
-                setEditingIdea(null);
-                setOpenAdd(true);
-              }}
-              className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
-            >
-              Dodaj usprawnienie
-            </button>
-          </div>
-        }
-      />
+      <div className="h-[85vh] min-h-[760px] overflow-hidden rounded-[1.75rem] border border-slate-800 bg-slate-950 p-3 text-slate-100 shadow-2xl shadow-slate-950/40">
+        <div className="flex h-full min-h-0 flex-col gap-3">
+          {error ? (
+            <div className="rounded-2xl border border-rose-400/25 bg-rose-400/[0.08] px-4 py-3 text-sm text-rose-100">
+              {error.message}
+            </div>
+          ) : null}
 
-      <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <MetricCard
-          label="Aktywne pomysły"
-          value={String(insights.activeIdeas.length)}
-          hint="Backlog i inicjatywy w realizacji"
-        />
-        <MetricCard
-          label="Quick wins"
-          value={String(insights.quickWins.length)}
-          hint="Możliwe do wdrożenia szybko"
-        />
-        <MetricCard
-          label="Potencjał oszczędności"
-          value={formatCurrency(insights.savingsPotential)}
-          hint="Szacowany miesięczny efekt backlogu"
-        />
-        <MetricCard
-          label="Realne oszczędności"
-          value={formatCurrency(insights.realizedSavings)}
-          hint="Miesięczny efekt wdrożonych pomysłów"
-        />
-        <MetricCard
-          label="Średnia poprawa KPI"
-          value={
-            insights.avgImprovement != null
-              ? `${insights.avgImprovement.toFixed(1)}%`
-              : "-"
-          }
-          hint={
-            insights.avgTargetAchievement != null
-              ? `Realizacja celu: ${insights.avgTargetAchievement.toFixed(1)}%`
-              : "Pojawi się po pomiarach efektów"
-          }
-        />
-      </div>
-      {error ? (
-        <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
-          {error.message}
-        </div>
-      ) : null}
-
-      <div className="mb-6 grid gap-4 xl:grid-cols-[1.3fr_1fr_1fr]">
-        <InsightCard
-          title="Rekomendowane do wdrożenia"
-          subtitle="Wpływ, termin i potencjał oszczędności"
-        >
-          <div className="space-y-3">
-            {insights.recommendedIdeas.map((idea) => (
-              <button
-                key={idea.id}
-                type="button"
-                onClick={() => setSelectedIdeaId(idea.id)}
-                className="w-full rounded-lg border border-slate-100 px-3 py-3 text-left hover:bg-slate-50"
-              >
+          <header className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 shadow-xl shadow-slate-950/25">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="text-sm font-medium text-slate-900">{idea.title}</div>
-                  <span
-                    className={[
-                      "rounded-full px-2 py-0.5 text-xs font-medium",
-                      getPriorityBadgeClass(idea.priorityScore),
-                    ].join(" ")}
-                  >
-                    {getPriorityLabel(idea.priorityScore)}
+                  <span className="rounded-full border border-cyan-400/25 bg-cyan-400/[0.08] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-100">
+                    Lean dashboard
                   </span>
-                  <span className="text-xs text-slate-500">{idea.priorityScore} pkt</span>
-                </div>
-                <div className="mt-1 text-xs text-slate-500">
-                  {idea.departmentName ?? "Bez działu"}
-                  {" · "}
-                  {wasteLabels[idea.wasteType] ?? "Inna strata"}
-                  {" · "}
-                  {impactLabels[idea.impact]}
-                </div>
-                <div className="mt-2 text-xs text-slate-600">
-                  {idea.baselineMetricName
-                    ? `${idea.baselineMetricName}${idea.metricUnit ? ` [${idea.metricUnit}]` : ""}`
-                    : "Brak zdefiniowanego KPI"}
-                </div>
-              </button>
-            ))}
-            {insights.recommendedIdeas.length === 0 ? (
-              <EmptyBox text="Brak otwartych usprawnień do priorytetyzacji." />
-            ) : null}
-          </div>
-        </InsightCard>
 
-        <InsightCard
-          title="Profil strat w backlogu"
-          subtitle="Najczęstsze źródła marnotrawstwa"
-        >
-          <div className="space-y-3">
-            {insights.wasteHotspots.map((item) => (
-              <div key={item.wasteType}>
-                <div className="mb-1 flex items-center justify-between text-sm">
-                  <span className="font-medium text-slate-900">
-                    {wasteLabels[item.wasteType] ?? "Inna strata"}
+                  <span className="rounded-full border border-emerald-400/25 bg-emerald-400/[0.08] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-100">
+                    {insights.activeIdeas.length} aktywnych
                   </span>
-                  <span className="text-slate-500">{item.count}</span>
                 </div>
-                <div className="h-2 rounded-full bg-slate-100">
-                  <div
-                    className="h-2 rounded-full bg-slate-900"
-                    style={{
-                      width: `${Math.max(
-                        12,
-                        (item.count / Math.max(insights.activeIdeas.length, 1)) * 100
-                      )}%`,
-                    }}
-                  />
+
+                <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-1">
+                  <h1 className="text-xl font-semibold tracking-tight text-white">
+                    Wszystkie usprawnienia
+                  </h1>
+
+                  <p className="text-sm text-slate-400">
+                    Lista, decyzje, KPI i priorytety w jednym widoku.
+                  </p>
                 </div>
               </div>
-            ))}
-            {insights.wasteHotspots.length === 0 ? (
-              <EmptyBox text="Profil strat pojawi się po dodaniu aktywnych pomysłów." />
-            ) : null}
-          </div>
-        </InsightCard>
 
-        <InsightCard
-          title="Wdrożone z efektem"
-          subtitle="Najnowsze pomysły z pomiarem wyniku"
-        >
-          <div className="space-y-3">
-            {insights.implementedHighlights.map((idea) => (
-              <button
-                key={idea.id}
-                type="button"
-                onClick={() => setSelectedIdeaId(idea.id)}
-                className="w-full rounded-lg border border-slate-100 px-3 py-3 text-left hover:bg-slate-50"
-              >
-                <div className="text-sm font-medium text-slate-900">{idea.title}</div>
-                <div className="mt-1 text-xs text-slate-500">
-                  {idea.departmentName ?? "Bez działu"}
-                </div>
-                <div className="mt-2 text-xs text-slate-600">
-                  {idea.improvementPercent != null
-                    ? `Poprawa KPI: ${idea.improvementPercent}%`
-                    : "Brak pełnego pomiaru poprawy"}
-                </div>
-                <div className="mt-1 text-xs text-slate-600">
-                  {idea.implementedSavingsPerMonth != null
-                    ? `Oszczędności: ${formatCurrency(idea.implementedSavingsPerMonth)}/mies.`
-                    : "Bez oszacowanych oszczędności"}
-                </div>
-              </button>
-            ))}
-            {insights.implementedHighlights.length === 0 ? (
-              <EmptyBox text="Dodaj wynik wdrożenia, aby pokazać efekty before/after." />
-            ) : null}
-          </div>
-        </InsightCard>
-      </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingIdea(null);
+                    setOpenAdd(true);
+                  }}
+                  className="rounded-xl border border-emerald-400/35 bg-emerald-400/[0.12] px-4 py-2 text-sm font-bold text-emerald-100 transition hover:border-emerald-300/50 hover:bg-emerald-400/[0.16]"
+                >
+                  + Dodaj usprawnienie
+                </button>
 
-      <div className="mb-6 grid gap-4 xl:grid-cols-[1.7fr_1fr]">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">Tablica działań</h2>
-              <p className="mt-1 text-xs text-slate-500">
-                Widok przepływu usprawnień od identyfikacji problemu do wdrożenia.
-              </p>
+                <button
+                  type="button"
+                  onClick={() => void loadData()}
+                  className="rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm font-medium text-slate-200 transition hover:border-slate-500 hover:bg-slate-800"
+                >
+                  Odśwież
+                </button>
+
+                <Link
+                  to="/departments"
+                  className="rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm font-medium text-slate-200 transition hover:border-slate-500 hover:bg-slate-800"
+                >
+                  Działy
+                </Link>
+
+                <Link
+                  to="/employees"
+                  className="rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm font-medium text-slate-200 transition hover:border-slate-500 hover:bg-slate-800"
+                >
+                  Właściciele
+                </Link>
+              </div>
             </div>
-          </div>
 
-          <div className="grid gap-4 xl:grid-cols-4">
-            {boardColumns.map(({ status, ideas: ideasForStatus }) => (
-              <div
-                key={status}
-                className="rounded-xl border border-slate-200 bg-slate-50 p-3"
-              >
-                <div className="mb-3 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-slate-900">
-                    {statusLabels[status]}
-                  </h3>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-xs text-slate-600">
-                    {ideasForStatus.length}
-                  </span>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+              <CompactMetric
+                label="Aktywne"
+                value={String(insights.activeIdeas.length)}
+                hint="W toku"
+                tone="cyan"
+              />
+
+              <CompactMetric
+                label="Quick wins"
+                value={String(insights.quickWins.length)}
+                hint="Szybkie wdrożenia"
+                tone="emerald"
+              />
+
+              <CompactMetric
+                label="Po terminie"
+                value={String(insights.overdueIdeas.length)}
+                hint="Pilne"
+                tone={insights.overdueIdeas.length > 0 ? "rose" : "slate"}
+              />
+
+              <CompactMetric
+                label="Potencjał / mies."
+                value={formatCurrency(insights.savingsPotential)}
+                hint="Szacunek"
+                tone="sky"
+              />
+
+              <CompactMetric
+                label="Efekt / mies."
+                value={formatCurrency(insights.realizedSavings)}
+                hint={
+                  insights.avgImprovement != null
+                    ? `KPI ${insights.avgImprovement.toFixed(1)}%`
+                    : "Bez pomiaru"
+                }
+                tone="violet"
+              />
+            </div>
+          </header>
+
+          <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[minmax(0,1.45fr)_minmax(380px,0.85fr)]">
+            <main className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 shadow-xl shadow-slate-950/25">
+              <div className="border-b border-slate-800 bg-slate-900/95 px-4 py-3">
+                <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                  <div>
+                    <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-300">
+                      Główna lista
+                    </h2>
+
+                    <p className="mt-1 text-xs text-slate-500">
+                      Kliknij pozycję, aby otworzyć panel decyzji po prawej
+                      stronie.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[34rem]">
+                    <CompactAlert
+                      label="Po terminie"
+                      value={String(insights.overdueIdeas.length)}
+                      hint="Najpilniejsze"
+                      tone={insights.overdueIdeas.length > 0 ? "rose" : "slate"}
+                    />
+
+                    <CompactAlert
+                      label="Na teraz"
+                      value={String(insights.dueSoonIdeas.length)}
+                      hint="Zbliża się termin"
+                      tone={
+                        insights.dueSoonIdeas.length > 0 ? "amber" : "slate"
+                      }
+                    />
+
+                    <CompactAlert
+                      label="Hot spot"
+                      value={
+                        insights.wasteHotspots[0]
+                          ? (wasteLabels[insights.wasteHotspots[0].wasteType] ??
+                            "Inna")
+                          : "-"
+                      }
+                      hint="Najczęstsza strata"
+                      tone="cyan"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-3">
-                  {ideasForStatus.slice(0, 5).map((idea) => (
+
+                <div className="mt-3 grid gap-2 xl:grid-cols-4">
+                  {insights.recommendedIdeas.map((idea) => (
                     <button
                       key={idea.id}
                       type="button"
-                      onClick={() => setSelectedIdeaId(idea.id)}
+                      onClick={() => {
+                        setSelectedIdeaId(idea.id);
+                        setSidePanelMode("decision");
+                      }}
                       className={[
-                        "w-full rounded-lg border px-3 py-3 text-left",
+                        "group rounded-xl border px-3 py-2 text-left transition",
                         selectedIdeaId === idea.id
-                          ? "border-slate-900 bg-white"
-                          : "border-slate-200 bg-white hover:bg-slate-50",
+                          ? "border-cyan-400/35 bg-cyan-400/[0.08]"
+                          : "border-slate-800 bg-slate-950/50 hover:border-cyan-400/25 hover:bg-slate-900",
                       ].join(" ")}
                     >
-                      <div className="text-sm font-medium text-slate-900">{idea.title}</div>
-                      <div className="mt-1 text-xs text-slate-500">
-                        {idea.ownerEmployeeName ?? "Bez właściciela"}
-                      </div>
-                      <div className="mt-2 text-xs text-slate-500">
-                        {wasteLabels[idea.wasteType] ?? "Inna strata"}
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-cyan-100">
+                          Do decyzji
+                        </span>
+
                         <span
                           className={[
-                            "rounded-full px-2 py-0.5 text-[11px] font-medium",
+                            "rounded-full px-2 py-0.5 text-[10px] font-bold",
                             getPriorityBadgeClass(idea.priorityScore),
                           ].join(" ")}
                         >
                           {getPriorityLabel(idea.priorityScore)}
                         </span>
-                        {idea.quickWin ? (
-                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-                            Quick win
-                          </span>
-                        ) : null}
+                      </div>
+
+                      <div className="mt-1 line-clamp-1 text-sm font-semibold text-white">
+                        {idea.title}
+                      </div>
+
+                      <div className="mt-1 line-clamp-1 text-xs text-slate-400">
+                        {idea.ownerEmployeeName ?? "Bez właściciela"}
                       </div>
                     </button>
                   ))}
-                  {ideasForStatus.length === 0 ? (
-                    <EmptyBox text="Brak pozycji w tej kolumnie." />
+
+                  {insights.recommendedIdeas.length === 0 ? (
+                    <div className="xl:col-span-4">
+                      <EmptyBox text="Brak otwartych usprawnień do priorytetyzacji." />
+                    </div>
                   ) : null}
                 </div>
               </div>
-            ))}
+
+              {loading ? (
+                <div className="flex flex-1 items-center justify-center text-sm text-slate-400">
+                  Ładowanie tablicy lean...
+                </div>
+              ) : null}
+
+              {!loading && ideas.length === 0 ? (
+                <EmptyStatePanel
+                  title="Brak usprawnień"
+                  description="Dodaj pierwszy pomysł i zbuduj backlog lean. To będzie główna lista do codziennej pracy."
+                  actionLabel="Dodaj pierwszy pomysł"
+                  onAction={() => {
+                    setEditingIdea(null);
+                    setOpenAdd(true);
+                  }}
+                />
+              ) : null}
+
+              {!loading && ideas.length > 0 ? (
+                <div className="min-h-0 flex-1 overflow-hidden">
+                  <div className="h-full overflow-auto">
+                    <table className="w-full min-w-[58rem] text-sm">
+                      <thead className="sticky top-0 z-10 bg-slate-950/95 backdrop-blur">
+                        <tr className="border-b border-slate-800 text-left text-[11px] uppercase tracking-[0.14em] text-slate-500">
+                          <th className="px-4 py-3">Pomysł</th>
+                          <th className="px-4 py-3">KPI</th>
+                          <th className="px-4 py-3">Priorytet</th>
+                          <th className="px-4 py-3">Termin</th>
+                          <th className="px-4 py-3">Status</th>
+                          <th className="px-4 py-3 text-right">Akcje</th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {ideas.map((idea) => (
+                          <tr
+                            key={idea.id}
+                            className={[
+                              "border-b border-slate-800/80 align-top last:border-0",
+                              selectedIdeaId === idea.id
+                                ? "bg-cyan-400/[0.06]"
+                                : "bg-slate-900/40 hover:bg-slate-800/70",
+                            ].join(" ")}
+                          >
+                            <td className="px-4 py-3">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedIdeaId(idea.id);
+                                  setSidePanelMode("decision");
+                                }}
+                                className="w-full text-left"
+                              >
+                                <div className="line-clamp-1 font-semibold text-white">
+                                  {idea.title}
+                                </div>
+
+                                <div className="mt-1 line-clamp-1 text-xs text-slate-400">
+                                  {idea.departmentName ?? "Bez działu"}
+                                  {" · "}
+                                  {idea.ownerEmployeeName ?? "Bez właściciela"}
+                                </div>
+
+                                <div className="mt-1 line-clamp-1 text-xs text-slate-500">
+                                  {wasteLabels[idea.wasteType] ?? "Inna strata"}
+                                </div>
+                              </button>
+                            </td>
+
+                            <td className="px-4 py-3">
+                              {idea.baselineMetricName ? (
+                                <div className="max-w-[17rem] text-xs text-slate-400">
+                                  <div className="line-clamp-1 font-semibold text-slate-200">
+                                    {idea.baselineMetricName}
+                                    {idea.metricUnit
+                                      ? ` [${idea.metricUnit}]`
+                                      : ""}
+                                  </div>
+
+                                  <div className="mt-1 line-clamp-1">
+                                    Przed:{" "}
+                                    {formatMetricValue(idea.baselineValue)}
+                                    {" · "}
+                                    Cel: {formatMetricValue(idea.targetValue)}
+                                    {" · "}
+                                    Po: {formatMetricValue(idea.actualValue)}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-slate-500">
+                                  Brak KPI
+                                </span>
+                              )}
+                            </td>
+
+                            <td className="px-4 py-3">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span
+                                  className={[
+                                    "rounded-full px-2 py-0.5 text-xs font-bold",
+                                    getPriorityBadgeClass(idea.priorityScore),
+                                  ].join(" ")}
+                                >
+                                  {getPriorityLabel(idea.priorityScore)}
+                                </span>
+
+                                <span className="text-xs text-slate-500">
+                                  {idea.priorityScore} pkt
+                                </span>
+
+                                {idea.quickWin ? (
+                                  <span className="rounded-full border border-emerald-400/25 bg-emerald-400/[0.08] px-2 py-0.5 text-xs font-bold text-emerald-100">
+                                    Quick win
+                                  </span>
+                                ) : null}
+                              </div>
+                            </td>
+
+                            <td className="px-4 py-3">
+                              <span
+                                className={[
+                                  "text-sm font-medium",
+                                  idea.isOverdue
+                                    ? "text-rose-200"
+                                    : idea.isDueSoon
+                                      ? "text-amber-200"
+                                      : "text-slate-300",
+                                ].join(" ")}
+                              >
+                                {formatDueDate(idea)}
+                              </span>
+                            </td>
+
+                            <td className="px-4 py-3">
+                              <select
+                                value={idea.status}
+                                disabled={updatingIdeaId === idea.id}
+                                onChange={(event) =>
+                                  void handleStatusChange(
+                                    idea.id,
+                                    Number(
+                                      event.target.value,
+                                    ) as ImprovementStatus,
+                                  )
+                                }
+                                className="rounded-xl border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100 outline-none transition focus:border-cyan-400/50 disabled:opacity-50"
+                              >
+                                {Object.values(ImprovementStatus).map(
+                                  (value) =>
+                                    typeof value === "number" ? (
+                                      <option key={value} value={value}>
+                                        {
+                                          statusLabels[
+                                            value as ImprovementStatus
+                                          ]
+                                        }
+                                      </option>
+                                    ) : null,
+                                )}
+                              </select>
+                            </td>
+
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedIdeaId(idea.id);
+                                    setSidePanelMode("decision");
+                                  }}
+                                  className="rounded-lg border border-cyan-400/25 bg-cyan-400/[0.08] px-2.5 py-1.5 text-xs font-semibold text-cyan-100 transition hover:border-cyan-400/40 hover:bg-cyan-400/[0.12]"
+                                >
+                                  Podgląd
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingIdea(idea)}
+                                  className="rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-xs font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-800"
+                                >
+                                  Edytuj
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+            </main>
+
+            <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 shadow-xl shadow-slate-950/25">
+              <div className="border-b border-slate-800 bg-slate-900/95 p-3">
+                <div className="grid grid-cols-3 gap-2 rounded-2xl border border-slate-800 bg-slate-950 p-1">
+                  <PanelTab
+                    active={sidePanelMode === "decision"}
+                    onClick={() => setSidePanelMode("decision")}
+                  >
+                    Decyzje
+                  </PanelTab>
+
+                  <PanelTab
+                    active={sidePanelMode === "board"}
+                    onClick={() => setSidePanelMode("board")}
+                  >
+                    Tablica
+                  </PanelTab>
+
+                  <PanelTab
+                    active={sidePanelMode === "insights"}
+                    onClick={() => setSidePanelMode("insights")}
+                  >
+                    Efekty
+                  </PanelTab>
+                </div>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-hidden">
+                {sidePanelMode === "decision" ? (
+                  <DecisionPanel
+                    selectedIdea={selectedIdea}
+                    updatingIdeaId={updatingIdeaId}
+                    onEdit={(idea) => setEditingIdea(idea)}
+                    onStatusChange={handleStatusChange}
+                  />
+                ) : null}
+
+                {sidePanelMode === "board" ? (
+                  <BoardPanel
+                    boardColumns={boardColumns}
+                    selectedIdeaId={selectedIdeaId}
+                    onSelectIdea={(ideaId) => {
+                      setSelectedIdeaId(ideaId);
+                      setSidePanelMode("decision");
+                    }}
+                  />
+                ) : null}
+
+                {sidePanelMode === "insights" ? (
+                  <InsightsPanel
+                    insights={insights}
+                    selectedIdeaId={selectedIdeaId}
+                    onSelectIdea={(ideaId) => {
+                      setSelectedIdeaId(ideaId);
+                      setSidePanelMode("decision");
+                    }}
+                  />
+                ) : null}
+              </div>
+            </aside>
           </div>
         </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">
-                Szczegóły usprawnienia
-              </h2>
-              <p className="mt-1 text-xs text-slate-500">
-                Kontekst problemu, KPI i akcje dla wybranego pomysłu.
-              </p>
-            </div>
-          </div>
-
-          {selectedIdea ? (
-            <div className="mt-4 space-y-4">
-              <div>
-                <div className="text-base font-semibold text-slate-900">
-                  {selectedIdea.title}
-                </div>
-                <div className="mt-1 text-sm text-slate-600">
-                  {selectedIdea.description}
-                </div>
-              </div>
-
-              <div className="grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
-                <DetailItem label="Status" value={statusLabels[selectedIdea.status]} />
-                <DetailItem label="Wpływ" value={impactLabels[selectedIdea.impact]} />
-                <DetailItem
-                  label="Dział"
-                  value={selectedIdea.departmentName ?? "Bez działu"}
-                />
-                <DetailItem
-                  label="Właściciel"
-                  value={selectedIdea.ownerEmployeeName ?? "Bez właściciela"}
-                />
-                <DetailItem
-                  label="Typ straty"
-                  value={wasteLabels[selectedIdea.wasteType] ?? "Inna strata"}
-                />
-                <DetailItem label="Termin" value={formatDueDate(selectedIdea)} />
-              </div>
-
-              <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                  KPI przed / cel / po
-                </div>
-                <div className="mt-2 text-sm text-slate-900">
-                  {selectedIdea.baselineMetricName ? (
-                    <>
-                      <div>
-                        {selectedIdea.baselineMetricName}
-                        {selectedIdea.metricUnit
-                          ? ` [${selectedIdea.metricUnit}]`
-                          : ""}
-                      </div>
-                      <div className="mt-1 text-slate-600">
-                        Przed: {formatMetricValue(selectedIdea.baselineValue)}
-                        {" · "}
-                        Cel: {formatMetricValue(selectedIdea.targetValue)}
-                        {" · "}
-                        Po: {formatMetricValue(selectedIdea.actualValue)}
-                      </div>
-                    </>
-                  ) : (
-                    "Brak zdefiniowanego KPI."
-                  )}
-                </div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  <SmallMetric
-                    label="Poprawa KPI"
-                    value={
-                      selectedIdea.improvementPercent != null
-                        ? `${selectedIdea.improvementPercent}%`
-                        : "-"
-                    }
-                  />
-                  <SmallMetric
-                    label="Realizacja celu"
-                    value={
-                      selectedIdea.targetAchievementPercent != null
-                        ? `${selectedIdea.targetAchievementPercent}%`
-                        : "-"
-                    }
-                  />
-                  <SmallMetric
-                    label="Potencjał / mies."
-                    value={formatNullableCurrency(
-                      selectedIdea.estimatedSavingsPerMonth
-                    )}
-                  />
-                  <SmallMetric
-                    label="Efekt / mies."
-                    value={formatNullableCurrency(
-                      selectedIdea.implementedSavingsPerMonth
-                    )}
-                  />
-                </div>
-              </div>
-
-              {selectedIdea.proposedAction ? (
-                <DetailBlock title="Plan działania" content={selectedIdea.proposedAction} />
-              ) : null}
-              {selectedIdea.rootCause ? (
-                <DetailBlock title="Przyczyna źródłowa" content={selectedIdea.rootCause} />
-              ) : null}
-              {selectedIdea.resultSummary ? (
-                <DetailBlock title="Efekt wdrożenia" content={selectedIdea.resultSummary} />
-              ) : null}
-              {selectedIdea.notes ? (
-                <DetailBlock title="Notatki" content={selectedIdea.notes} />
-              ) : null}
-
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingIdea(selectedIdea)}
-                  className="rounded-md border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  Edytuj
-                </button>
-                {selectedIdea.status !== ImprovementStatus.InProgress ? (
-                  <button
-                    type="button"
-                    disabled={updatingIdeaId === selectedIdea.id}
-                    onClick={() =>
-                      void handleStatusChange(
-                        selectedIdea.id,
-                        ImprovementStatus.InProgress
-                      )
-                    }
-                    className="rounded-md border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                  >
-                    Oznacz realizację
-                  </button>
-                ) : null}
-                {selectedIdea.status !== ImprovementStatus.Implemented ? (
-                  <button
-                    type="button"
-                    disabled={updatingIdeaId === selectedIdea.id}
-                    onClick={() =>
-                      void handleStatusChange(
-                        selectedIdea.id,
-                        ImprovementStatus.Implemented
-                      )
-                    }
-                    className="rounded-md bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-60"
-                  >
-                    Oznacz wdrożenie
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          ) : (
-            <EmptyBox text="Wybierz pomysł z tablicy albo z rekomendacji, aby zobaczyć szczegóły." />
-          )}
-        </div>
-      </div>
-
-      <div className="rounded-xl bg-white p-4 shadow">
-        {loading ? (
-          <div className="py-10 text-center text-sm text-slate-500">
-            Ładowanie tablicy lean...
-          </div>
-        ) : null}
-
-        {!loading && ideas.length === 0 ? (
-          <div className="py-10 text-center text-sm text-slate-500">
-            Brak usprawnień. Dodaj pierwszy pomysł i zbuduj backlog lean.
-          </div>
-        ) : null}
-
-        {!loading && ideas.length > 0 ? (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-slate-500">
-                <th className="py-2">Pomysł</th>
-                <th className="py-2">KPI przed / po</th>
-                <th className="py-2">Wpływ</th>
-                <th className="py-2">Priorytet</th>
-                <th className="py-2">Termin</th>
-                <th className="py-2">Status</th>
-                <th className="py-2 text-right">Akcje</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ideas.map((idea) => (
-                <tr key={idea.id} className="border-b last:border-0 align-top">
-                  <td className="py-3">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedIdeaId(idea.id)}
-                      className="text-left"
-                    >
-                      <div className="font-medium text-slate-900">{idea.title}</div>
-                      <div className="text-xs text-slate-500">
-                        {idea.departmentName ?? "Bez działu"}
-                        {" · "}
-                        {idea.ownerEmployeeName ?? "Bez właściciela"}
-                      </div>
-                      <div className="mt-1 text-xs text-slate-500">
-                        {wasteLabels[idea.wasteType] ?? "Inna strata"}
-                      </div>
-                    </button>
-                  </td>
-                  <td className="py-3">
-                    {idea.baselineMetricName ? (
-                      <div className="text-xs text-slate-600">
-                        <div>
-                          {idea.baselineMetricName}
-                          {idea.metricUnit ? ` [${idea.metricUnit}]` : ""}
-                        </div>
-                        <div>
-                          Przed: {formatMetricValue(idea.baselineValue)} | Cel: {formatMetricValue(idea.targetValue)} | Po: {formatMetricValue(idea.actualValue)}
-                        </div>
-                        <div>
-                          Efekt: {idea.improvementPercent != null ? `${idea.improvementPercent}%` : "brak pomiaru"}
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-slate-500">Brak KPI</span>
-                    )}
-                  </td>
-                  <td className="py-3">{impactLabels[idea.impact]}</td>
-                  <td className="py-3">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={[
-                          "rounded-full px-2 py-0.5 text-xs font-medium",
-                          getPriorityBadgeClass(idea.priorityScore),
-                        ].join(" ")}
-                      >
-                        {getPriorityLabel(idea.priorityScore)}
-                      </span>
-                      <span className="text-xs text-slate-500">{idea.priorityScore}</span>
-                    </div>
-                  </td>
-                  <td className="py-3">
-                    <span
-                      className={
-                        idea.isOverdue
-                          ? "text-rose-700"
-                          : idea.isDueSoon
-                            ? "text-amber-800"
-                            : "text-slate-600"
-                      }
-                    >
-                      {formatDueDate(idea)}
-                    </span>
-                  </td>
-                  <td className="py-3">
-                    <select
-                      value={idea.status}
-                      disabled={updatingIdeaId === idea.id}
-                      onChange={(event) =>
-                        void handleStatusChange(
-                          idea.id,
-                          Number(event.target.value) as ImprovementStatus
-                        )
-                      }
-                      className="rounded-md border border-slate-300 px-2 py-1 text-sm"
-                    >
-                      {Object.values(ImprovementStatus).map((value) =>
-                        typeof value === "number" ? (
-                          <option key={value} value={value}>
-                            {statusLabels[value as ImprovementStatus]}
-                          </option>
-                        ) : null
-                      )}
-                    </select>
-                  </td>
-                  <td className="py-3 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedIdeaId(idea.id)}
-                        className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
-                      >
-                        Podgląd
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingIdea(idea)}
-                        className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
-                      >
-                        Edytuj
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : null}
       </div>
 
       <AddImprovementIdeaModal
@@ -854,20 +822,494 @@ export function LeanIdeasScreen() {
   );
 }
 
-function MetricCard({
+function DecisionPanel({
+  selectedIdea,
+  updatingIdeaId,
+  onEdit,
+  onStatusChange,
+}: {
+  selectedIdea: ImprovementIdeaDto | null;
+  updatingIdeaId: string | null;
+  onEdit: (idea: ImprovementIdeaDto) => void;
+  onStatusChange: (ideaId: string, status: ImprovementStatus) => Promise<void>;
+}) {
+  if (!selectedIdea) {
+    return (
+      <div className="p-3">
+        <EmptyBox text="Wybierz pozycję z listy albo z sekcji „Do decyzji”, aby zobaczyć szczegóły i akcje." />
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full overflow-auto p-3">
+      <div className="space-y-3">
+        <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.06] p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs font-semibold text-slate-200">
+              {statusLabels[selectedIdea.status]}
+            </span>
+
+            <span
+              className={[
+                "rounded-full px-2.5 py-1 text-xs font-bold",
+                getPriorityBadgeClass(selectedIdea.priorityScore),
+              ].join(" ")}
+            >
+              {getPriorityLabel(selectedIdea.priorityScore)}
+            </span>
+
+            <span className="rounded-full border border-violet-400/25 bg-violet-400/[0.08] px-2.5 py-1 text-xs font-semibold text-violet-100">
+              {impactLabels[selectedIdea.impact]}
+            </span>
+
+            {selectedIdea.quickWin ? (
+              <span className="rounded-full border border-emerald-400/25 bg-emerald-400/[0.08] px-2.5 py-1 text-xs font-bold text-emerald-100">
+                Quick win
+              </span>
+            ) : null}
+          </div>
+
+          <div className="mt-3 text-lg font-semibold leading-tight text-white">
+            {selectedIdea.title}
+          </div>
+
+          <div className="mt-2 line-clamp-4 text-sm leading-6 text-slate-300">
+            {selectedIdea.description}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <SmallMetric
+            label="Dział"
+            value={selectedIdea.departmentName ?? "Bez działu"}
+          />
+
+          <SmallMetric
+            label="Właściciel"
+            value={selectedIdea.ownerEmployeeName ?? "Bez właściciela"}
+          />
+
+          <SmallMetric
+            label="Termin"
+            value={formatDueDate(selectedIdea)}
+            tone={
+              selectedIdea.isOverdue
+                ? "rose"
+                : selectedIdea.isDueSoon
+                  ? "amber"
+                  : "slate"
+            }
+          />
+
+          <SmallMetric
+            label="Typ straty"
+            value={wasteLabels[selectedIdea.wasteType] ?? "Inna strata"}
+          />
+        </div>
+
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+          <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+            KPI i wynik
+          </div>
+
+          {selectedIdea.baselineMetricName ? (
+            <div className="mt-2 space-y-2">
+              <div className="line-clamp-1 text-sm font-semibold text-white">
+                {selectedIdea.baselineMetricName}
+                {selectedIdea.metricUnit ? ` [${selectedIdea.metricUnit}]` : ""}
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <SmallMetric
+                  label="Przed"
+                  value={formatMetricValue(selectedIdea.baselineValue)}
+                />
+
+                <SmallMetric
+                  label="Cel"
+                  value={formatMetricValue(selectedIdea.targetValue)}
+                />
+
+                <SmallMetric
+                  label="Po"
+                  value={formatMetricValue(selectedIdea.actualValue)}
+                />
+
+                <SmallMetric
+                  label="Poprawa KPI"
+                  value={
+                    selectedIdea.improvementPercent != null
+                      ? `${selectedIdea.improvementPercent}%`
+                      : "-"
+                  }
+                  tone="cyan"
+                />
+
+                <SmallMetric
+                  label="Realizacja"
+                  value={
+                    selectedIdea.targetAchievementPercent != null
+                      ? `${selectedIdea.targetAchievementPercent}%`
+                      : "-"
+                  }
+                  tone="violet"
+                />
+
+                <SmallMetric
+                  label="Efekt / mies."
+                  value={formatNullableCurrency(
+                    selectedIdea.implementedSavingsPerMonth,
+                  )}
+                  tone="emerald"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="mt-2 text-sm text-slate-500">
+              Brak zdefiniowanego KPI.
+            </div>
+          )}
+        </div>
+
+        {selectedIdea.proposedAction ? (
+          <DetailBlock
+            title="Plan działania"
+            content={selectedIdea.proposedAction}
+          />
+        ) : null}
+
+        {selectedIdea.rootCause ? (
+          <DetailBlock
+            title="Przyczyna źródłowa"
+            content={selectedIdea.rootCause}
+          />
+        ) : null}
+
+        {selectedIdea.resultSummary ? (
+          <DetailBlock
+            title="Efekt wdrożenia"
+            content={selectedIdea.resultSummary}
+          />
+        ) : null}
+
+        {selectedIdea.notes ? (
+          <DetailBlock title="Notatki" content={selectedIdea.notes} />
+        ) : null}
+
+        <div className="sticky bottom-0 z-10 grid gap-2 border-t border-slate-800 bg-slate-900/95 pt-3 backdrop-blur">
+          <button
+            type="button"
+            onClick={() => onEdit(selectedIdea)}
+            className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-500 hover:bg-slate-800"
+          >
+            Edytuj usprawnienie
+          </button>
+
+          {selectedIdea.status !== ImprovementStatus.InProgress ? (
+            <button
+              type="button"
+              disabled={updatingIdeaId === selectedIdea.id}
+              onClick={() =>
+                void onStatusChange(
+                  selectedIdea.id,
+                  ImprovementStatus.InProgress,
+                )
+              }
+              className="rounded-xl border border-amber-400/30 bg-amber-400/[0.08] px-3 py-2 text-sm font-bold text-amber-100 transition hover:border-amber-300/45 hover:bg-amber-400/[0.12] disabled:opacity-60"
+            >
+              Oznacz realizację
+            </button>
+          ) : null}
+
+          {selectedIdea.status !== ImprovementStatus.Implemented ? (
+            <button
+              type="button"
+              disabled={updatingIdeaId === selectedIdea.id}
+              onClick={() =>
+                void onStatusChange(
+                  selectedIdea.id,
+                  ImprovementStatus.Implemented,
+                )
+              }
+              className="rounded-xl border border-emerald-400/35 bg-emerald-400/[0.12] px-3 py-2 text-sm font-bold text-emerald-100 transition hover:border-emerald-300/50 hover:bg-emerald-400/[0.16] disabled:opacity-60"
+            >
+              Oznacz wdrożenie
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BoardPanel({
+  boardColumns,
+  selectedIdeaId,
+  onSelectIdea,
+}: {
+  boardColumns: {
+    status: ImprovementStatus;
+    ideas: ImprovementIdeaDto[];
+  }[];
+  selectedIdeaId: string | null;
+  onSelectIdea: (ideaId: string) => void;
+}) {
+  return (
+    <div className="h-full overflow-auto p-3">
+      <div className="grid gap-3">
+        {boardColumns.map(({ status, ideas: ideasForStatus }) => (
+          <div
+            key={status}
+            className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3"
+          >
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <h3 className="text-sm font-bold text-white">
+                {statusLabels[status]}
+              </h3>
+
+              <span className="rounded-full border border-slate-700 bg-slate-900 px-2 py-0.5 text-xs font-semibold text-slate-300">
+                {ideasForStatus.length}
+              </span>
+            </div>
+
+            <div className="grid gap-2">
+              {ideasForStatus.slice(0, 5).map((idea) => (
+                <button
+                  key={idea.id}
+                  type="button"
+                  onClick={() => onSelectIdea(idea.id)}
+                  className={[
+                    "w-full rounded-xl border px-3 py-2 text-left transition",
+                    selectedIdeaId === idea.id
+                      ? "border-cyan-400/35 bg-cyan-400/[0.08]"
+                      : "border-slate-800 bg-slate-900/70 hover:border-cyan-400/25 hover:bg-slate-800",
+                  ].join(" ")}
+                >
+                  <div className="line-clamp-1 text-sm font-semibold text-white">
+                    {idea.title}
+                  </div>
+
+                  <div className="mt-1 line-clamp-1 text-xs text-slate-400">
+                    {idea.ownerEmployeeName ?? "Bez właściciela"}
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <span
+                      className={[
+                        "rounded-full px-2 py-0.5 text-[11px] font-bold",
+                        getPriorityBadgeClass(idea.priorityScore),
+                      ].join(" ")}
+                    >
+                      {getPriorityLabel(idea.priorityScore)}
+                    </span>
+
+                    {idea.quickWin ? (
+                      <span className="rounded-full border border-emerald-400/25 bg-emerald-400/[0.08] px-2 py-0.5 text-[11px] font-bold text-emerald-100">
+                        Quick win
+                      </span>
+                    ) : null}
+                  </div>
+                </button>
+              ))}
+
+              {ideasForStatus.length === 0 ? (
+                <EmptyBox text="Brak pozycji w tej kolumnie." />
+              ) : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function InsightsPanel({
+  insights,
+  selectedIdeaId,
+  onSelectIdea,
+}: {
+  insights: InsightsData;
+  selectedIdeaId: string | null;
+  onSelectIdea: (ideaId: string) => void;
+}) {
+  return (
+    <div className="h-full overflow-auto p-3">
+      <div className="grid gap-3">
+        <InsightCard
+          title="Profil strat w backlogu"
+          subtitle="Najczęstsze źródła marnotrawstwa"
+        >
+          <div className="space-y-3">
+            {insights.wasteHotspots.map((item) => (
+              <div key={item.wasteType}>
+                <div className="mb-1 flex items-center justify-between gap-3 text-sm">
+                  <span className="line-clamp-1 font-semibold text-white">
+                    {wasteLabels[item.wasteType] ?? "Inna strata"}
+                  </span>
+
+                  <span className="text-slate-400">{item.count}</span>
+                </div>
+
+                <div className="h-2 rounded-full bg-slate-800">
+                  <div
+                    className="h-2 rounded-full bg-cyan-300/35"
+                    style={{
+                      width: `${Math.max(
+                        12,
+                        (item.count /
+                          Math.max(insights.activeIdeas.length, 1)) *
+                          100,
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+
+            {insights.wasteHotspots.length === 0 ? (
+              <EmptyBox text="Profil strat pojawi się po dodaniu aktywnych pomysłów." />
+            ) : null}
+          </div>
+        </InsightCard>
+
+        <InsightCard
+          title="Wdrożone z efektem"
+          subtitle="Najnowsze pomysły z wynikiem"
+        >
+          <div className="space-y-2">
+            {insights.implementedHighlights.map((idea) => (
+              <button
+                key={idea.id}
+                type="button"
+                onClick={() => onSelectIdea(idea.id)}
+                className={[
+                  "w-full rounded-xl border px-3 py-3 text-left transition",
+                  selectedIdeaId === idea.id
+                    ? "border-cyan-400/35 bg-cyan-400/[0.08]"
+                    : "border-slate-800 bg-slate-950/70 hover:border-cyan-400/25 hover:bg-slate-900",
+                ].join(" ")}
+              >
+                <div className="line-clamp-1 text-sm font-semibold text-white">
+                  {idea.title}
+                </div>
+
+                <div className="mt-1 line-clamp-1 text-xs text-slate-400">
+                  {idea.departmentName ?? "Bez działu"}
+                </div>
+
+                <div className="mt-2 text-xs text-slate-300">
+                  {idea.improvementPercent != null
+                    ? `Poprawa KPI: ${idea.improvementPercent}%`
+                    : "Brak pełnego pomiaru poprawy"}
+                </div>
+
+                <div className="mt-1 text-xs text-slate-300">
+                  {idea.implementedSavingsPerMonth != null
+                    ? `Efekt: ${formatCurrency(idea.implementedSavingsPerMonth)}/mies.`
+                    : "Bez oszacowanych oszczędności"}
+                </div>
+              </button>
+            ))}
+
+            {insights.implementedHighlights.length === 0 ? (
+              <EmptyBox text="Dodaj wynik wdrożenia, aby pokazać efekty before/after." />
+            ) : null}
+          </div>
+        </InsightCard>
+      </div>
+    </div>
+  );
+}
+
+function PanelTab({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "rounded-xl border px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] transition",
+        active
+          ? "border-cyan-400/35 bg-cyan-400/[0.10] text-cyan-100"
+          : "border-transparent text-slate-400 hover:bg-slate-800 hover:text-slate-100",
+      ].join(" ")}
+    >
+      {children}
+    </button>
+  );
+}
+
+function CompactMetric({
   label,
   value,
   hint,
+  tone = "slate",
 }: {
   label: string;
   value: string;
   hint: string;
+  tone?: MetricTone;
 }) {
+  const toneClasses: Record<MetricTone, string> = {
+    slate: "border-slate-700 bg-slate-900 text-slate-100",
+    emerald: "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-100",
+    sky: "border-sky-400/25 bg-sky-400/[0.08] text-sky-100",
+    rose: "border-rose-400/25 bg-rose-400/[0.08] text-rose-100",
+    cyan: "border-cyan-400/25 bg-cyan-400/[0.08] text-cyan-100",
+    violet: "border-violet-400/25 bg-violet-400/[0.08] text-violet-100",
+  };
+
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="text-sm text-slate-500">{label}</div>
-      <div className="mt-2 text-2xl font-semibold text-slate-900">{value}</div>
-      <div className="mt-1 text-xs text-slate-500">{hint}</div>
+    <div className={`rounded-2xl border px-3 py-2.5 ${toneClasses[tone]}`}>
+      <div className="text-[10px] font-bold uppercase tracking-[0.16em] opacity-70">
+        {label}
+      </div>
+
+      <div className="mt-1 truncate text-lg font-bold leading-none">
+        {value}
+      </div>
+
+      <div className="mt-1 truncate text-xs opacity-75">{hint}</div>
+    </div>
+  );
+}
+
+function CompactAlert({
+  label,
+  value,
+  tone,
+  hint,
+}: {
+  label: string;
+  value: string;
+  tone: AlertTone;
+  hint: string;
+}) {
+  const toneClasses: Record<AlertTone, string> = {
+    slate: "border-slate-800 bg-slate-950/70 text-slate-200",
+    emerald: "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-100",
+    amber: "border-amber-400/25 bg-amber-400/[0.08] text-amber-100",
+    rose: "border-rose-400/25 bg-rose-400/[0.08] text-rose-100",
+    cyan: "border-cyan-400/25 bg-cyan-400/[0.08] text-cyan-100",
+  };
+
+  return (
+    <div className={`rounded-xl border px-3 py-2 ${toneClasses[tone]}`}>
+      <div className="text-[10px] font-bold uppercase tracking-[0.14em] opacity-75">
+        {label}
+      </div>
+
+      <div className="mt-1 line-clamp-1 text-sm font-bold">{value}</div>
+
+      <div className="mt-0.5 line-clamp-1 text-xs opacity-75">{hint}</div>
     </div>
   );
 }
@@ -882,49 +1324,99 @@ function InsightCard({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between gap-4">
-        <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
-        <span className="text-right text-xs text-slate-500">{subtitle}</span>
+    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+      <div className="mb-3 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-sm font-bold text-white">{title}</h2>
+
+          <p className="mt-1 text-xs text-slate-500">{subtitle}</p>
+        </div>
       </div>
+
       {children}
     </div>
   );
 }
 
-function SmallMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-      <div className="text-[11px] uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="mt-1 text-sm font-medium text-slate-900">{value}</div>
-    </div>
-  );
-}
+function SmallMetric({
+  label,
+  value,
+  tone = "slate",
+}: {
+  label: string;
+  value: string;
+  tone?: SmallMetricTone;
+}) {
+  const toneClasses: Record<SmallMetricTone, string> = {
+    slate: "border-slate-800 bg-slate-950/70 text-slate-100",
+    emerald: "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-100",
+    amber: "border-amber-400/25 bg-amber-400/[0.08] text-amber-100",
+    rose: "border-rose-400/25 bg-rose-400/[0.08] text-rose-100",
+    cyan: "border-cyan-400/25 bg-cyan-400/[0.08] text-cyan-100",
+    violet: "border-violet-400/25 bg-violet-400/[0.08] text-violet-100",
+  };
 
-function DetailItem({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <div className="uppercase tracking-wide text-slate-400">{label}</div>
-      <div className="mt-1 text-sm text-slate-900">{value}</div>
+    <div className={`rounded-xl border px-3 py-2 ${toneClasses[tone]}`}>
+      <div className="text-[10px] font-bold uppercase tracking-[0.14em] opacity-60">
+        {label}
+      </div>
+
+      <div className="mt-1 line-clamp-1 text-sm font-semibold">{value}</div>
     </div>
   );
 }
 
 function DetailBlock({ title, content }: { title: string; content: string }) {
   return (
-    <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+      <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
         {title}
       </div>
-      <div className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{content}</div>
+
+      <div className="mt-2 line-clamp-5 whitespace-pre-wrap text-sm leading-6 text-slate-300">
+        {content}
+      </div>
     </div>
   );
 }
 
 function EmptyBox({ text }: { text: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-sm text-slate-500">
+    <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 px-3 py-5 text-sm text-slate-500">
       {text}
+    </div>
+  );
+}
+
+function EmptyStatePanel({
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  description: string;
+  actionLabel: string;
+  onAction: () => void;
+}) {
+  return (
+    <div className="flex flex-1 items-center justify-center p-6 text-center">
+      <div>
+        <div className="text-lg font-bold text-white">{title}</div>
+
+        <div className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+          {description}
+        </div>
+
+        <button
+          type="button"
+          onClick={onAction}
+          className="mt-5 rounded-xl border border-emerald-400/35 bg-emerald-400/[0.12] px-4 py-2 text-sm font-bold text-emerald-100 transition hover:border-emerald-300/50 hover:bg-emerald-400/[0.16]"
+        >
+          {actionLabel}
+        </button>
+      </div>
     </div>
   );
 }
@@ -938,11 +1430,23 @@ function getPriorityLabel(score: number) {
 }
 
 function getPriorityBadgeClass(score: number) {
-  if (score >= 90) return "bg-rose-50 text-rose-700";
-  if (score >= 65) return "bg-amber-50 text-amber-800";
-  if (score >= 40) return "bg-sky-50 text-sky-700";
-  if (score > 0) return "bg-slate-100 text-slate-700";
-  return "bg-emerald-50 text-emerald-700";
+  if (score >= 90) {
+    return "border border-rose-400/30 bg-rose-400/[0.10] text-rose-100";
+  }
+
+  if (score >= 65) {
+    return "border border-amber-400/30 bg-amber-400/[0.10] text-amber-100";
+  }
+
+  if (score >= 40) {
+    return "border border-sky-400/30 bg-sky-400/[0.10] text-sky-100";
+  }
+
+  if (score > 0) {
+    return "border border-slate-500/40 bg-slate-700/45 text-slate-200";
+  }
+
+  return "border border-emerald-400/30 bg-emerald-400/[0.10] text-emerald-100";
 }
 
 function formatDueDate(idea: ImprovementIdeaDto) {
@@ -953,11 +1457,11 @@ function formatDueDate(idea: ImprovementIdeaDto) {
   const formatted = new Date(idea.dueDateUtc).toLocaleDateString("pl-PL");
 
   if (idea.isOverdue) {
-    return `${formatted} (po terminie)`;
+    return `${formatted} · po terminie`;
   }
 
   if (idea.isDueSoon) {
-    return `${formatted} (wkrótce)`;
+    return `${formatted} · wkrótce`;
   }
 
   return formatted;
@@ -978,4 +1482,3 @@ function formatCurrency(value: number) {
 function formatNullableCurrency(value?: number | null) {
   return value != null ? formatCurrency(value) : "-";
 }
-

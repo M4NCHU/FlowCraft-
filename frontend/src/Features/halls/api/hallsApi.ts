@@ -1,4 +1,4 @@
-﻿import {
+import {
   apiDelete,
   apiGet,
   apiPost,

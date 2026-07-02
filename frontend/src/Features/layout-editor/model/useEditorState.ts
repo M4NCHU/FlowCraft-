@@ -31,9 +31,13 @@ interface EditorState {
   boundaryRequired: boolean;
 
   addElementAt: (x: number, y: number) => void;
+  addRoad: (road: { points: number[]; width?: number; name?: string }) => void;
   addRoadSegment: (x1: number, y1: number, x2: number, y2: number) => void;
+  updateRoad: (id: string, patch: Partial<TransportPath>) => void;
+  deleteRoad: (id: string) => void;
 
   addBoundaryPoint: (x: number, y: number) => void;
+  undoBoundaryPoint: () => void;
   closeBoundary: () => void;
   clearBoundary: () => void;
 
@@ -193,6 +197,62 @@ export const useEditorState = create<EditorState>((set, get) => ({
     set({ roads: [...roads, newRoad] });
   },
 
+  addRoad: ({ points, width, name }) => {
+    const { snapping, roads, boundaryRequired, boundary } = get();
+    if (boundaryRequired && !boundary.closed) return;
+
+    const gridSize = snapping.gridSize || 40;
+    const snap = (v: number) =>
+      snapping.snapToGrid ? Math.round(v / gridSize) * gridSize : v;
+
+    const normalizedPoints = (points ?? [])
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value))
+      .map((value) => snap(value));
+
+    if (normalizedPoints.length < 4) return;
+
+    const newRoad: TransportPath = {
+      id: createId(),
+      name: name?.trim() || `Droga ${roads.length + 1}`,
+      points: normalizedPoints,
+      width:
+        typeof width === "number" && Number.isFinite(width) && width > 0
+          ? width
+          : gridSize / 4,
+    };
+
+    set({ roads: [...roads, newRoad] });
+  },
+
+  updateRoad: (id, patch) =>
+    set((state) => ({
+      roads: state.roads.map((road) =>
+        road.id === id
+          ? {
+              ...road,
+              ...patch,
+              name: patch.name?.trim() || road.name,
+              width:
+                typeof patch.width === "number" &&
+                Number.isFinite(patch.width) &&
+                patch.width > 0
+                  ? patch.width
+                  : road.width,
+              points:
+                patch.points
+                  ?.map((value) => Number(value))
+                  .filter((value) => Number.isFinite(value)) ?? road.points,
+            }
+          : road,
+      ),
+    })),
+
+  deleteRoad: (id) =>
+    set((state) => ({
+      roads: state.roads.filter((road) => road.id !== id),
+    })),
+
   addBoundaryPoint: (x, y) => {
     const { boundary, snapping } = get();
     if (boundary.closed) return;
@@ -205,6 +265,15 @@ export const useEditorState = create<EditorState>((set, get) => ({
       boundary: { ...boundary, points: [...boundary.points, snap(x), snap(y)] },
     });
   },
+
+  undoBoundaryPoint: () =>
+    set((state) => ({
+      boundary: {
+        ...state.boundary,
+        closed: false,
+        points: state.boundary.points.slice(0, -2),
+      },
+    })),
 
   closeBoundary: () =>
     set((s) => {
@@ -226,7 +295,7 @@ export const useEditorState = create<EditorState>((set, get) => ({
 
     set((state) => ({
       elements: state.elements.map((e) =>
-        e.id === id ? { ...e, x: snap(x), y: snap(y) } : e
+        e.id === id ? { ...e, x: snap(x), y: snap(y) } : e,
       ),
     }));
   },
@@ -236,7 +305,7 @@ export const useEditorState = create<EditorState>((set, get) => ({
   updateElement: (id, patch) =>
     set((state) => ({
       elements: state.elements.map((e) =>
-        e.id === id ? { ...e, ...patch } : e
+        e.id === id ? { ...e, ...patch } : e,
       ),
     })),
 

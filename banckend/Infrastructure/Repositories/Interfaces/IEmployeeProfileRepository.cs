@@ -8,6 +8,7 @@ public interface IEmployeeProfileRepository
         Guid tenantId,
         bool includeInactive = false,
         bool includeSkills = false,
+        bool includeAssignments = false,
         CancellationToken cancellationToken = default);
 
     Task<EmployeeProfile?> GetByIdAsync(
@@ -15,6 +16,7 @@ public interface IEmployeeProfileRepository
         Guid id,
         bool includeUser = false,
         bool includeSkills = false,
+        bool includeAssignments = false,
         CancellationToken cancellationToken = default);
 
     Task<EmployeeProfile?> GetByEmployeeNumberAsync(Guid tenantId, string employeeNumber, CancellationToken cancellationToken = default);

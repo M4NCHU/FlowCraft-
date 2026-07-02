@@ -44,9 +44,10 @@ public sealed class AssetCategoryService : IAssetCategoryService
             throw new InvalidOperationException($"Asset category name '{name}' already exists for asset type {request.AssetType}.");
 
         var now = DateTime.UtcNow;
+        var categoryId = Guid.NewGuid();
         var category = new AssetCategory
         {
-            Id = Guid.NewGuid(),
+            Id = categoryId,
             TenantId = tenantId,
             Name = name,
             Code = code,
@@ -56,7 +57,7 @@ public sealed class AssetCategoryService : IAssetCategoryService
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
             Parameters = request.Parameters
-                .Select(parameter => MapParameterRequest(parameter, now))
+                .Select(parameter => MapParameterRequest(parameter, now, categoryId))
                 .ToList()
         };
 
@@ -68,8 +69,19 @@ public sealed class AssetCategoryService : IAssetCategoryService
 
     public async Task<AssetCategoryDto> UpdateAsync(Guid tenantId, Guid categoryId, UpdateAssetCategoryRequest request, CancellationToken ct = default)
     {
-        var category = await _uow.AssetCategories.GetByIdAsync(tenantId, categoryId, cancellationToken: ct)
+        var category = await _uow.AssetCategories.GetByIdAsync(
+                tenantId,
+                categoryId,
+                includeParameters: false,
+                includeAssets: false,
+                cancellationToken: ct)
             ?? throw new InvalidOperationException($"Asset category {categoryId} not found.");
+
+        var existingParameters = (await _uow.AssetCategories.GetParametersAsync(
+                tenantId,
+                categoryId,
+                ct))
+            .ToList();
 
         var code = NormalizeCode(request.Code);
         var name = Require(request.Name, nameof(request.Name));
@@ -86,16 +98,34 @@ public sealed class AssetCategoryService : IAssetCategoryService
         category.AssetType = request.AssetType;
         category.Description = TrimOrNull(request.Description);
         category.IsActive = request.IsActive;
-        category.UpdatedAtUtc = DateTime.UtcNow;
 
-        var existingParametersByCode = category.Parameters
+        var now = DateTime.UtcNow;
+        category.UpdatedAtUtc = now;
+        var matchedParameterIds = new HashSet<Guid>();
+        var existingParametersByCode = existingParameters
             .ToDictionary(x => x.Code, StringComparer.OrdinalIgnoreCase);
+        var existingParametersById = existingParameters
+            .ToDictionary(x => x.Id);
 
         foreach (var parameterRequest in request.Parameters)
         {
             var normalizedCode = NormalizeCode(parameterRequest.Code);
-            if (existingParametersByCode.TryGetValue(normalizedCode, out var existing))
+            AssetCategoryParameter? existing = null;
+
+            if (parameterRequest.Id.HasValue)
             {
+                if (!existingParametersById.TryGetValue(parameterRequest.Id.Value, out existing))
+                    throw new InvalidOperationException(
+                        $"Asset category parameter {parameterRequest.Id.Value} not found in category {categoryId}.");
+            }
+            else if (existingParametersByCode.TryGetValue(normalizedCode, out var existingByCode))
+            {
+                existing = existingByCode;
+            }
+
+            if (existing is not null)
+            {
+                var previousCode = existing.Code;
                 existing.Name = Require(parameterRequest.Name, nameof(parameterRequest.Name));
                 existing.Code = normalizedCode;
                 existing.Type = parameterRequest.Type;
@@ -104,18 +134,46 @@ public sealed class AssetCategoryService : IAssetCategoryService
                 existing.DisplayOrder = parameterRequest.DisplayOrder;
                 existing.DefaultValue = TrimOrNull(parameterRequest.DefaultValue);
                 existing.OptionsJson = SerializeOptions(parameterRequest.Options);
-                existing.UpdatedAtUtc = DateTime.UtcNow;
+                existing.UpdatedAtUtc = now;
+                matchedParameterIds.Add(existing.Id);
+
+                if (!string.Equals(previousCode, normalizedCode, StringComparison.OrdinalIgnoreCase))
+                {
+                    existingParametersByCode.Remove(previousCode);
+                    existingParametersByCode[normalizedCode] = existing;
+                }
             }
             else
             {
-                category.Parameters.Add(MapParameterRequest(parameterRequest, DateTime.UtcNow));
+                var created = MapParameterRequest(parameterRequest, now, categoryId);
+                await _uow.AssetCategories.AddParameterAsync(created, ct);
+                existingParameters.Add(created);
+                existingParametersById[created.Id] = created;
+                existingParametersByCode[created.Code] = created;
+                matchedParameterIds.Add(created.Id);
             }
         }
 
-        await _uow.AssetCategories.UpdateAsync(category, ct);
+        var removedParameters = existingParameters
+            .Where(parameter => !matchedParameterIds.Contains(parameter.Id))
+            .ToList();
+
+        foreach (var removed in removedParameters)
+        {
+            _uow.AssetCategories.RemoveParameter(removed);
+        }
+
         await _uow.SaveChangesAsync(ct);
 
-        return Map(category);
+        var refreshedCategory = await _uow.AssetCategories.GetByIdAsync(
+                tenantId,
+                categoryId,
+                includeParameters: true,
+                includeAssets: true,
+                cancellationToken: ct)
+            ?? throw new InvalidOperationException($"Asset category {categoryId} not found after update.");
+
+        return Map(refreshedCategory);
     }
 
     private static AssetCategoryDto Map(AssetCategory category) =>
@@ -152,10 +210,14 @@ public sealed class AssetCategoryService : IAssetCategoryService
             Options = ParseOptions(parameter.OptionsJson)
         };
 
-    private static AssetCategoryParameter MapParameterRequest(AssetCategoryParameterRequest request, DateTime now) =>
+    private static AssetCategoryParameter MapParameterRequest(
+        AssetCategoryParameterRequest request,
+        DateTime now,
+        Guid? categoryId = null) =>
         new()
         {
             Id = Guid.NewGuid(),
+            AssetCategoryId = categoryId ?? Guid.Empty,
             Name = Require(request.Name, nameof(request.Name)),
             Code = NormalizeCode(request.Code),
             Type = request.Type,

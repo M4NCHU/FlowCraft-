@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>aspnet-banckend-be9363fb-c214-4159-9642-f802671a81d1</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <UseAppHost>false</UseAppHost>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,10 +29,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Algorithms\Algorithms.csproj" />
-    <ProjectReference Include="..\Application\Application.csproj" />
-    <ProjectReference Include="..\Domain\Domain.csproj" />
-    <ProjectReference Include="..\Infrastructure\Infrastructure.csproj" />
+    <ProjectReference Include="..\Algorithms\Algorithms.csproj" SkipGetTargetFrameworkProperties="true" />
+    <ProjectReference Include="..\Application\Application.csproj" SkipGetTargetFrameworkProperties="true" />
+    <ProjectReference Include="..\Domain\Domain.csproj" SkipGetTargetFrameworkProperties="true" />
+    <ProjectReference Include="..\Infrastructure\Infrastructure.csproj" SkipGetTargetFrameworkProperties="true" />
   </ItemGroup>
 
 </Project>

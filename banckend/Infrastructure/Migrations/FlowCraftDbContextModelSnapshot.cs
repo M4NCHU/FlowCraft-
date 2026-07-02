@@ -49,6 +49,14 @@ namespace Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
+                    b.Property<decimal?>("FootprintLengthMeters")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<decimal?>("FootprintWidthMeters")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -531,6 +539,9 @@ namespace Infrastructure.Migrations
                     b.Property<Guid>("AssetCategoryId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("AssetId")
+                        .HasColumnType("uuid");
+
                     b.Property<bool>("CanApproveMaintenance")
                         .HasColumnType("boolean");
 
@@ -563,10 +574,17 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("AssetCategoryId");
 
+                    b.HasIndex("AssetId");
+
                     b.HasIndex("TenantId");
 
                     b.HasIndex("EmployeeId", "AssetCategoryId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"AssetId\" IS NULL");
+
+                    b.HasIndex("EmployeeId", "AssetId")
+                        .IsUnique()
+                        .HasFilter("\"AssetId\" IS NOT NULL");
 
                     b.ToTable("employee_skills", (string)null);
                 });
@@ -600,6 +618,303 @@ namespace Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("tenants", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Inventory.InventoryCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DefaultSupplier")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("Domain")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("LinkedDepartmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Code")
+                        .IsUnique();
+
+                    b.ToTable("inventory_categories", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Inventory.InventoryCategoryParameter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("InventoryCategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Options")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<bool>("Required")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Unit")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InventoryCategoryId", "Code")
+                        .IsUnique();
+
+                    b.ToTable("inventory_category_parameters", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Inventory.InventoryItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Criticality")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastReceiptAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("LeadTimeDays")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("LinkedAssetCategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("LinkedAssetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("LinkedDepartmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("MinimumStock")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<decimal>("QuantityOnHand")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("QuantityReserved")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("ReorderQuantity")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("SKU")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int?>("ServiceType")
+                        .HasColumnType("integer")
+                        .HasColumnName("servicetype");
+
+                    b.Property<string>("SupplierName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<decimal?>("UnitCost")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("LinkedAssetId");
+
+                    b.HasIndex("TenantId", "IsActive");
+
+                    b.HasIndex("TenantId", "SKU")
+                        .IsUnique();
+
+                    b.ToTable("inventory_items", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Inventory.InventoryItemParameter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("InventoryItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ParameterDefinitionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParameterDefinitionId");
+
+                    b.HasIndex("InventoryItemId", "ParameterDefinitionId")
+                        .IsUnique();
+
+                    b.ToTable("inventory_item_parameters", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Inventory.InventoryProcurementOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ExpectedDeliveryAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("InventoryItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("LinkedMaintenancePlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("LinkedWorkOrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("ReceivedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("RequestedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("RequestedByDepartmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SupplierName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InventoryItemId");
+
+                    b.HasIndex("LinkedMaintenancePlanId");
+
+                    b.HasIndex("TenantId", "Status");
+
+                    b.ToTable("inventory_procurement_orders", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Layouts.HallSection", b =>
@@ -1764,6 +2079,11 @@ namespace Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Domain.Assets.Asset", "Asset")
+                        .WithMany("EmployeeSkills")
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("Domain.Employees.EmployeeProfile", "Employee")
                         .WithMany("Skills")
                         .HasForeignKey("EmployeeId")
@@ -1774,9 +2094,104 @@ namespace Infrastructure.Migrations
                         .WithMany("EmployeeSkills")
                         .HasForeignKey("TenantId");
 
+                    b.Navigation("Asset");
+
                     b.Navigation("AssetCategory");
 
                     b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("Domain.Inventory.InventoryCategory", b =>
+                {
+                    b.HasOne("Domain.Instance.Tenant", "Tenant")
+                        .WithMany("InventoryCategories")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Domain.Inventory.InventoryCategoryParameter", b =>
+                {
+                    b.HasOne("Domain.Inventory.InventoryCategory", "InventoryCategory")
+                        .WithMany("Parameters")
+                        .HasForeignKey("InventoryCategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("InventoryCategory");
+                });
+
+            modelBuilder.Entity("Domain.Inventory.InventoryItem", b =>
+                {
+                    b.HasOne("Domain.Inventory.InventoryCategory", "Category")
+                        .WithMany("Items")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Assets.Asset", "LinkedAsset")
+                        .WithMany()
+                        .HasForeignKey("LinkedAssetId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Domain.Instance.Tenant", "Tenant")
+                        .WithMany("InventoryItems")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+
+                    b.Navigation("LinkedAsset");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Domain.Inventory.InventoryItemParameter", b =>
+                {
+                    b.HasOne("Domain.Inventory.InventoryItem", "InventoryItem")
+                        .WithMany("ParameterValues")
+                        .HasForeignKey("InventoryItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Inventory.InventoryCategoryParameter", "ParameterDefinition")
+                        .WithMany()
+                        .HasForeignKey("ParameterDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("InventoryItem");
+
+                    b.Navigation("ParameterDefinition");
+                });
+
+            modelBuilder.Entity("Domain.Inventory.InventoryProcurementOrder", b =>
+                {
+                    b.HasOne("Domain.Inventory.InventoryItem", "InventoryItem")
+                        .WithMany("ProcurementOrders")
+                        .HasForeignKey("InventoryItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Maintenance.MaintenancePlan", "LinkedMaintenancePlan")
+                        .WithMany()
+                        .HasForeignKey("LinkedMaintenancePlanId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Domain.Instance.Tenant", "Tenant")
+                        .WithMany("InventoryProcurementOrders")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("InventoryItem");
+
+                    b.Navigation("LinkedMaintenancePlan");
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("Domain.Layouts.HallSection", b =>
@@ -2105,6 +2520,8 @@ namespace Infrastructure.Migrations
                 {
                     b.Navigation("Assignments");
 
+                    b.Navigation("EmployeeSkills");
+
                     b.Navigation("FailureReports");
 
                     b.Navigation("LayoutElements");
@@ -2186,6 +2603,12 @@ namespace Infrastructure.Migrations
 
                     b.Navigation("ImprovementIdeas");
 
+                    b.Navigation("InventoryCategories");
+
+                    b.Navigation("InventoryItems");
+
+                    b.Navigation("InventoryProcurementOrders");
+
                     b.Navigation("MaintenanceExecutions");
 
                     b.Navigation("MaintenancePlans");
@@ -2193,6 +2616,20 @@ namespace Infrastructure.Migrations
                     b.Navigation("Users");
 
                     b.Navigation("WorkOrders");
+                });
+
+            modelBuilder.Entity("Domain.Inventory.InventoryCategory", b =>
+                {
+                    b.Navigation("Items");
+
+                    b.Navigation("Parameters");
+                });
+
+            modelBuilder.Entity("Domain.Inventory.InventoryItem", b =>
+                {
+                    b.Navigation("ParameterValues");
+
+                    b.Navigation("ProcurementOrders");
                 });
 
             modelBuilder.Entity("Domain.Layouts.HallSection", b =>

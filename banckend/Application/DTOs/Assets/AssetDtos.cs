@@ -82,6 +82,8 @@ public sealed class AssetDetailsDto
     public string? SerialNumber { get; set; }
     public string? Manufacturer { get; set; }
     public string? Model { get; set; }
+    public decimal? FootprintWidthMeters { get; set; }
+    public decimal? FootprintLengthMeters { get; set; }
     public bool IsMobile { get; set; }
     public bool IsActive { get; set; }
     public DateTime? PurchasedAtUtc { get; set; }
@@ -111,6 +113,8 @@ public sealed class CreateAssetRequest
     public string? SerialNumber { get; set; }
     public string? Manufacturer { get; set; }
     public string? Model { get; set; }
+    public decimal? FootprintWidthMeters { get; set; }
+    public decimal? FootprintLengthMeters { get; set; }
     public bool IsMobile { get; set; }
     public string? Notes { get; set; }
     public IReadOnlyList<SetAssetParameterValueRequest> Parameters { get; set; } = Array.Empty<SetAssetParameterValueRequest>();
@@ -128,6 +132,8 @@ public sealed class UpdateAssetRequest
     public string? SerialNumber { get; set; }
     public string? Manufacturer { get; set; }
     public string? Model { get; set; }
+    public decimal? FootprintWidthMeters { get; set; }
+    public decimal? FootprintLengthMeters { get; set; }
     public bool IsMobile { get; set; }
     public string? Notes { get; set; }
     public IReadOnlyList<SetAssetParameterValueRequest> Parameters { get; set; } = Array.Empty<SetAssetParameterValueRequest>();

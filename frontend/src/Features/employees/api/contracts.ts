@@ -22,6 +22,10 @@ export interface EmployeeSkillDto {
   id: string;
   assetCategoryId: string;
   assetCategoryName: string;
+  assetId?: string | null;
+  assetName?: string | null;
+  isMachineSpecific: boolean;
+  scopeLabel: string;
   assetType: number;
   skillLevel: EmployeeSkillLevel;
   canOperate: boolean;
@@ -30,6 +34,15 @@ export interface EmployeeSkillDto {
   notes?: string | null;
   createdAtUtc: string;
   updatedAtUtc: string;
+}
+
+export interface EmployeeAssignedAssetDto {
+  assetId: string;
+  assetName: string;
+  assetCode: string;
+  assetCategoryName?: string | null;
+  assignedAtUtc: string;
+  dueBackAtUtc?: string | null;
 }
 
 export interface EmployeeDto {
@@ -49,6 +62,7 @@ export interface EmployeeDto {
   createdAtUtc: string;
   updatedAtUtc: string;
   skills: EmployeeSkillDto[];
+  assignedAssets: EmployeeAssignedAssetDto[];
 }
 
 export interface CreateEmployeeRequest {
@@ -78,6 +92,7 @@ export interface UpdateEmployeeRequest {
 
 export interface UpsertEmployeeSkillRequest {
   assetCategoryId: string;
+  assetId?: string | null;
   skillLevel: EmployeeSkillLevel;
   canOperate: boolean;
   canMaintain: boolean;

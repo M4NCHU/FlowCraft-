@@ -13,6 +13,7 @@ public interface IAssetService
     Task DeleteAsync(Guid tenantId, Guid assetId, CancellationToken ct = default);
 
     Task<AssetPlacementDto> PlaceAsync(Guid tenantId, Guid assetId, PlaceAssetRequest request, CancellationToken ct = default);
+    Task RemovePlacementAsync(Guid tenantId, Guid assetId, CancellationToken ct = default);
     Task<AssetAssignmentDto> AssignAsync(Guid tenantId, Guid assetId, AssignAssetRequest request, CancellationToken ct = default);
     Task<AssetAssignmentDto> ReturnAsync(Guid tenantId, Guid assetId, ReturnAssetRequest request, CancellationToken ct = default);
     Task<IReadOnlyList<AssetUsageReadingDto>> GetUsageReadingsAsync(Guid tenantId, Guid assetId, CancellationToken ct = default);

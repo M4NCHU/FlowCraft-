@@ -75,6 +75,8 @@ public sealed class AssetService : IAssetService
             SerialNumber = TrimOrNull(request.SerialNumber),
             Manufacturer = TrimOrNull(request.Manufacturer),
             Model = TrimOrNull(request.Model),
+            FootprintWidthMeters = NormalizeDimension(request.FootprintWidthMeters, nameof(request.FootprintWidthMeters)),
+            FootprintLengthMeters = NormalizeDimension(request.FootprintLengthMeters, nameof(request.FootprintLengthMeters)),
             IsMobile = request.IsMobile,
             Notes = TrimOrNull(request.Notes),
             CreatedAtUtc = now,
@@ -121,6 +123,12 @@ public sealed class AssetService : IAssetService
         asset.SerialNumber = TrimOrNull(request.SerialNumber);
         asset.Manufacturer = TrimOrNull(request.Manufacturer);
         asset.Model = TrimOrNull(request.Model);
+        asset.FootprintWidthMeters = NormalizeDimension(
+            request.FootprintWidthMeters,
+            nameof(request.FootprintWidthMeters));
+        asset.FootprintLengthMeters = NormalizeDimension(
+            request.FootprintLengthMeters,
+            nameof(request.FootprintLengthMeters));
         asset.IsMobile = request.IsMobile;
         asset.Notes = TrimOrNull(request.Notes);
         asset.UpdatedAtUtc = DateTime.UtcNow;
@@ -156,6 +164,20 @@ public sealed class AssetService : IAssetService
     {
         var asset = await _uow.Assets.GetByIdAsync(tenantId, assetId, cancellationToken: ct)
             ?? throw new InvalidOperationException($"Asset {assetId} not found.");
+        var hall = await _uow.ProductionHalls.GetByIdAsync(
+            tenantId,
+            request.HallId,
+            includeSections: true,
+            cancellationToken: ct)
+            ?? throw new InvalidOperationException($"Hall {request.HallId} not found.");
+
+        if (!request.SectionId.HasValue)
+            throw new InvalidOperationException("Machine placement requires selecting a hall section.");
+
+        var section = hall.Sections.FirstOrDefault(x => x.Id == request.SectionId.Value && x.IsActive);
+        if (section is null)
+            throw new InvalidOperationException(
+                $"Section {request.SectionId.Value} not found in hall {request.HallId}.");
 
         var currentPlacement = await _uow.Assets.GetCurrentPlacementAsync(tenantId, assetId, ct);
         var now = DateTime.UtcNow;
@@ -191,6 +213,24 @@ public sealed class AssetService : IAssetService
         await _uow.SaveChangesAsync(ct);
 
         return MapPlacement(placement);
+    }
+
+    public async Task RemovePlacementAsync(Guid tenantId, Guid assetId, CancellationToken ct = default)
+    {
+        var asset = await _uow.Assets.GetByIdAsync(tenantId, assetId, cancellationToken: ct)
+            ?? throw new InvalidOperationException($"Asset {assetId} not found.");
+
+        var currentPlacement = await _uow.Assets.GetCurrentPlacementAsync(tenantId, assetId, ct);
+        if (currentPlacement is null)
+            return;
+
+        currentPlacement.IsCurrent = false;
+        currentPlacement.RemovedAtUtc = DateTime.UtcNow;
+        asset.UpdatedAtUtc = currentPlacement.RemovedAtUtc.Value;
+
+        await _uow.Assets.UpdatePlacementAsync(currentPlacement, ct);
+        await _uow.Assets.UpdateAsync(asset, ct);
+        await _uow.SaveChangesAsync(ct);
     }
 
     public async Task<AssetAssignmentDto> AssignAsync(Guid tenantId, Guid assetId, AssignAssetRequest request, CancellationToken ct = default)
@@ -359,6 +399,8 @@ public sealed class AssetService : IAssetService
             SerialNumber = asset.SerialNumber,
             Manufacturer = asset.Manufacturer,
             Model = asset.Model,
+            FootprintWidthMeters = asset.FootprintWidthMeters,
+            FootprintLengthMeters = asset.FootprintLengthMeters,
             IsMobile = asset.IsMobile,
             IsActive = asset.IsActive,
             PurchasedAtUtc = asset.PurchasedAtUtc,
@@ -377,8 +419,12 @@ public sealed class AssetService : IAssetService
                 .Select(MapUsageReading)
                 .ToList(),
             UsageSummaries = BuildUsageSummaries(asset, maintenancePlans),
-            FailureReportsCount = asset.FailureReports.Count,
-            WorkOrdersCount = asset.WorkOrders.Count
+            FailureReportsCount = asset.FailureReports.Count(report =>
+                report.Status != FailureStatus.Resolved &&
+                report.Status != FailureStatus.Closed),
+            WorkOrdersCount = asset.WorkOrders.Count(order =>
+                order.Status != WorkOrderStatus.Done &&
+                order.Status != WorkOrderStatus.Cancelled)
         };
 
     private static AssetPlacementDto MapPlacement(AssetPlacement placement) =>
@@ -708,6 +754,17 @@ public sealed class AssetService : IAssetService
 
     private static string? TrimOrNull(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static decimal? NormalizeDimension(decimal? value, string paramName)
+    {
+        if (!value.HasValue)
+            return null;
+
+        if (value.Value <= 0)
+            throw new InvalidOperationException($"{paramName} must be greater than zero.");
+
+        return decimal.Round(value.Value, 2, MidpointRounding.AwayFromZero);
+    }
 
     private static string? MergeNotes(string? existing, string? addition)
     {

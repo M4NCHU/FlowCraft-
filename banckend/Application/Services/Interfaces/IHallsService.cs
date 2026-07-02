@@ -1,4 +1,4 @@
-﻿using Domain.Layouts;
+using Domain.Layouts;
 
 namespace Application.Services.Interfaces;
 
@@ -14,7 +14,6 @@ public interface IHallsService
         string code,
         string? description,
         string outlineJson,
-        double areaSqMeters,
         CancellationToken ct = default);
 
     Task UpdateHallAsync(
@@ -24,7 +23,6 @@ public interface IHallsService
         string code,
         string? description,
         string outlineJson,
-        double areaSqMeters,
         CancellationToken ct = default);
 
     Task DeleteHallAsync(Guid tenantId, Guid hallId, CancellationToken ct = default);

@@ -27,6 +27,7 @@ export interface TransportPath {
 }
 export interface LayoutScale {
   metersPerGridCell: number;
+  gridSize?: number;
 }
 
 export interface HallBoundary {
@@ -37,4 +38,5 @@ export interface HallBoundary {
 export interface HallOutlineDtoV2 {
   boundary: HallBoundary;
   scale?: LayoutScale;
+  roads?: TransportPath[];
 }

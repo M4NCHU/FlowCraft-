@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using Application.Services.Interfaces;
 using Domain.Layouts;
 using FlowCraft.Domain.Auth;
@@ -26,6 +26,7 @@ public sealed class HallsController : ControllerBase
         Guid Id,
         string Name,
         string Code,
+        string OutlineJson,
         double AreaSqMeters,
         int SectionsCount);
 
@@ -50,15 +51,13 @@ public sealed class HallsController : ControllerBase
         [Required] string Name,
         [Required] string Code,
         string? Description,
-        [Required] string OutlineJson,
-        [Range(0, double.MaxValue)] double AreaSqMeters);
+        [Required] string OutlineJson);
 
     public sealed record UpdateHallRequest(
         [Required] string Name,
         [Required] string Code,
         string? Description,
-        [Required] string OutlineJson,
-        [Range(0, double.MaxValue)] double AreaSqMeters);
+        [Required] string OutlineJson);
 
     public sealed record CreateSectionRequest(
         [Required] string Name,
@@ -86,6 +85,7 @@ public sealed class HallsController : ControllerBase
                 h.Id,
                 h.Name,
                 h.Code,
+                h.OutlineJson,
                 h.AreaSqMeters,
                 h.Sections.Count))
             .ToList();
@@ -131,7 +131,6 @@ public sealed class HallsController : ControllerBase
             code: request.Code,
             description: request.Description,
             outlineJson: request.OutlineJson,
-            areaSqMeters: request.AreaSqMeters,
             ct: ct);
 
         _logger.LogInformation("Production hall created. hallId={HallId}, tenantId={TenantId}, name={Name}",
@@ -165,7 +164,6 @@ public sealed class HallsController : ControllerBase
             code: request.Code,
             description: request.Description,
             outlineJson: request.OutlineJson,
-            areaSqMeters: request.AreaSqMeters,
             ct: ct);
 
         _logger.LogInformation("Production hall updated. hallId={HallId}, tenantId={TenantId}", id, tenantId);

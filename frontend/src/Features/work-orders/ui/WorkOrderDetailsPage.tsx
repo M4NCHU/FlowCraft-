@@ -2,6 +2,8 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "../../../shared/ui/PageHeader";
 import { ApiError, toApiError } from "../../../shared/api/httpClient";
+import { employeesApi } from "../../employees/api/employeesApi";
+import type { EmployeeDto } from "../../employees/api/contracts";
 import { assetsApi } from "../../machines/api/assetsApi";
 import type { AssetListItemDto } from "../../machines/api/contracts";
 import { maintenancePlansApi } from "../../maintenance/api/maintenancePlansApi";
@@ -14,6 +16,7 @@ import {
   type WorkOrderDto,
 } from "../api/contracts";
 import { workOrdersApi } from "../api/workOrdersApi";
+import { AddWorkOrderModal } from "./components/AddWorkOrderModal";
 
 const statusOptions = [
   { value: WorkOrderStatus.New, label: "Nowe" },
@@ -51,10 +54,12 @@ export function WorkOrderDetailsPage() {
   const navigate = useNavigate();
   const [workOrder, setWorkOrder] = useState<WorkOrderDto | null>(null);
   const [assets, setAssets] = useState<AssetListItemDto[]>([]);
+  const [employees, setEmployees] = useState<EmployeeDto[]>([]);
   const [maintenancePlan, setMaintenancePlan] = useState<MaintenancePlanDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
+  const [openEdit, setOpenEdit] = useState(false);
   const [status, setStatus] = useState<WorkOrderStatus>(WorkOrderStatus.New);
   const [actualMinutes, setActualMinutes] = useState("");
   const [actualCost, setActualCost] = useState("");
@@ -74,14 +79,16 @@ export function WorkOrderDetailsPage() {
         setActualCost(data.actualCost != null ? String(data.actualCost) : "");
         setResolutionSummary(data.resolutionSummary ?? "");
 
-        const [assetsData, planData] = await Promise.all([
+        const [assetsData, employeeData, planData] = await Promise.all([
           assetsApi.list(),
+          employeesApi.list({ includeInactive: false }),
           data.maintenancePlanId
             ? maintenancePlansApi.getById(data.maintenancePlanId)
             : Promise.resolve(null),
         ]);
 
         setAssets(assetsData ?? []);
+        setEmployees(employeeData ?? []);
         setMaintenancePlan(planData);
       } catch (err) {
         setError(toApiError(err, "Nie udało się pobrać zlecenia."));
@@ -128,18 +135,33 @@ export function WorkOrderDetailsPage() {
   if (!workOrder) return <div>Nie znaleziono zlecenia.</div>;
 
   const asset = assets.find((entry) => entry.id === workOrder.assetId) ?? null;
+  const assignedEmployee =
+    employees.find((entry) => entry.id === workOrder.assignedToEmployeeId) ?? null;
+  const requestedByEmployee =
+    employees.find((entry) => entry.id === workOrder.requestedByEmployeeId) ?? null;
 
   return (
     <>
       <PageHeader
         title={`Zlecenie ${workOrder.number}`}
+        eyebrow="Szczegoly zlecenia"
+        description="Pelny kontekst zlecenia serwisowego: priorytet, termin, powiazana maszyna oraz wynik wykonania. To tutaj zamykasz obieg pracy i zapisujesz finalne rozliczenie."
         extra={
-          <button
-            onClick={() => navigate(-1)}
-            className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm hover:bg-slate-50"
-          >
-            Wróć
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setOpenEdit(true)}
+              className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm hover:bg-slate-50"
+            >
+              Edytuj zlecenie
+            </button>
+            <button
+              onClick={() => navigate(-1)}
+              className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm hover:bg-slate-50"
+            >
+              Wróć
+            </button>
+          </div>
         }
       />
       <div className="grid gap-4 md:grid-cols-3">
@@ -162,6 +184,22 @@ export function WorkOrderDetailsPage() {
               }
             />
             <Detail
+              label="Przypisany pracownik"
+              value={
+                assignedEmployee
+                  ? `${assignedEmployee.firstName} ${assignedEmployee.lastName}`
+                  : "-"
+              }
+            />
+            <Detail
+              label="Zgłaszający"
+              value={
+                requestedByEmployee
+                  ? `${requestedByEmployee.firstName} ${requestedByEmployee.lastName}`
+                  : "-"
+              }
+            />
+            <Detail
               label="Termin"
               value={formatDateTime(workOrder.dueAtUtc ?? workOrder.requestedAtUtc)}
             />
@@ -176,6 +214,26 @@ export function WorkOrderDetailsPage() {
             <Detail
               label="Wyzwolenie licznikiem"
               value={workOrder.triggeredByMeterValue != null ? String(workOrder.triggeredByMeterValue) : "-"}
+            />
+            <Detail
+              label="Planowany czas"
+              value={
+                workOrder.estimatedMinutes != null
+                  ? `${workOrder.estimatedMinutes} min`
+                  : "-"
+              }
+            />
+            <Detail
+              label="Planowany koszt"
+              value={
+                workOrder.estimatedCost != null
+                  ? `${workOrder.estimatedCost} PLN`
+                  : "-"
+              }
+            />
+            <Detail
+              label="Wykonawca zewnętrzny"
+              value={workOrder.externalVendor ?? "-"}
             />
             <Detail
               label="Auto-utworzone"
@@ -213,6 +271,12 @@ export function WorkOrderDetailsPage() {
                 Szczegóły maszyny
               </Link>
             ) : null}
+            <Link
+              to={`/inventory${asset ? `?assetId=${encodeURIComponent(asset.id)}&workOrderId=${encodeURIComponent(workOrder.id)}` : `?workOrderId=${encodeURIComponent(workOrder.id)}`}`}
+              className="rounded-lg border border-slate-200 px-3 py-3 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              Sprawdz czesci w magazynie
+            </Link>
           </div>
         </div>
         <div className="rounded-xl bg-white p-4 shadow">
@@ -262,6 +326,17 @@ export function WorkOrderDetailsPage() {
           </button>
         </div>
       </div>
+
+      <AddWorkOrderModal
+        open={openEdit}
+        onClose={() => setOpenEdit(false)}
+        assets={assets}
+        employees={employees}
+        workOrder={workOrder}
+        onSaved={(updated) => {
+          setWorkOrder(updated);
+        }}
+      />
     </>
   );
 }

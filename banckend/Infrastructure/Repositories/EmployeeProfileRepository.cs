@@ -18,6 +18,7 @@ public sealed class EmployeeProfileRepository : IEmployeeProfileRepository
         Guid tenantId,
         bool includeInactive = false,
         bool includeSkills = false,
+        bool includeAssignments = false,
         CancellationToken cancellationToken = default)
     {
         IQueryable<EmployeeProfile> query = _db.EmployeeProfiles
@@ -29,7 +30,16 @@ public sealed class EmployeeProfileRepository : IEmployeeProfileRepository
         {
             query = query
                 .Include(x => x.Skills)
-                .ThenInclude(x => x.AssetCategory);
+                .ThenInclude(x => x.AssetCategory)
+                .Include(x => x.Skills)
+                .ThenInclude(x => x.Asset);
+        }
+
+        if (includeAssignments)
+        {
+            query = query
+                .Include(x => x.AssetAssignments)
+                .ThenInclude(x => x.Asset);
         }
 
         if (!includeInactive)
@@ -46,6 +56,7 @@ public sealed class EmployeeProfileRepository : IEmployeeProfileRepository
         Guid id,
         bool includeUser = false,
         bool includeSkills = false,
+        bool includeAssignments = false,
         CancellationToken cancellationToken = default)
     {
         IQueryable<EmployeeProfile> query = _db.EmployeeProfiles
@@ -59,7 +70,16 @@ public sealed class EmployeeProfileRepository : IEmployeeProfileRepository
         {
             query = query
                 .Include(x => x.Skills)
-                .ThenInclude(x => x.AssetCategory);
+                .ThenInclude(x => x.AssetCategory)
+                .Include(x => x.Skills)
+                .ThenInclude(x => x.Asset);
+        }
+
+        if (includeAssignments)
+        {
+            query = query
+                .Include(x => x.AssetAssignments)
+                .ThenInclude(x => x.Asset);
         }
 
         return await query.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);

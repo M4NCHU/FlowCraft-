@@ -43,6 +43,8 @@ public class Asset
     public string? SerialNumber { get; set; }
     public string? Manufacturer { get; set; }
     public string? Model { get; set; }
+    public decimal? FootprintWidthMeters { get; set; }
+    public decimal? FootprintLengthMeters { get; set; }
 
     public bool IsMobile { get; set; }
     public bool IsActive { get; set; } = true;
@@ -60,6 +62,7 @@ public class Asset
     public ICollection<AssetUsageReading> UsageReadings { get; set; } = new List<AssetUsageReading>();
     public ICollection<AssetPlacement> Placements { get; set; } = new List<AssetPlacement>();
     public ICollection<AssetAssignment> Assignments { get; set; } = new List<AssetAssignment>();
+    public ICollection<Domain.Employees.EmployeeSkill> EmployeeSkills { get; set; } = new List<Domain.Employees.EmployeeSkill>();
     public ICollection<AssetParameterValue> ParameterValues { get; set; } = new List<AssetParameterValue>();
     public ICollection<LayoutElement> LayoutElements { get; set; } = new List<LayoutElement>();
     public ICollection<FailureReport> FailureReports { get; set; } = new List<FailureReport>();

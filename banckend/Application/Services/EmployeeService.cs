@@ -1,5 +1,6 @@
 using Application.DTOs.Employees;
 using Application.Services.Interfaces;
+using Domain.Assets;
 using Domain.Employees;
 using FlowCraft.Interfaces.Abstractions;
 
@@ -16,7 +17,12 @@ public sealed class EmployeeService : IEmployeeService
 
     public async Task<IReadOnlyList<EmployeeDto>> GetAllAsync(Guid tenantId, bool includeInactive = false, CancellationToken ct = default)
     {
-        var employees = await _uow.Employees.GetAllAsync(tenantId, includeInactive, includeSkills: true, cancellationToken: ct);
+        var employees = await _uow.Employees.GetAllAsync(
+            tenantId,
+            includeInactive,
+            includeSkills: true,
+            includeAssignments: true,
+            cancellationToken: ct);
         return employees.Select(Map).ToList();
     }
 
@@ -27,6 +33,7 @@ public sealed class EmployeeService : IEmployeeService
             employeeId,
             includeUser: true,
             includeSkills: true,
+            includeAssignments: true,
             cancellationToken: ct);
         return employee is null ? null : Map(employee);
     }
@@ -75,20 +82,27 @@ public sealed class EmployeeService : IEmployeeService
             tenantId,
             employeeId,
             includeSkills: true,
+            includeAssignments: true,
             cancellationToken: ct)
             ?? throw new InvalidOperationException($"Employee {employeeId} not found.");
 
         var inputSkills = (request.Skills ?? Array.Empty<UpsertEmployeeSkillRequest>())
-            .GroupBy(skill => skill.AssetCategoryId)
+            .GroupBy(GetSkillKey)
             .Select(group => group.Last())
             .ToList();
 
         var requestedCategoryIds = inputSkills.Select(skill => skill.AssetCategoryId).ToHashSet();
+        var requestedAssetIds = inputSkills
+            .Where(skill => skill.AssetId.HasValue)
+            .Select(skill => skill.AssetId!.Value)
+            .ToHashSet();
         var categories = await _uow.AssetCategories.GetAllAsync(
             tenantId,
             includeInactive: false,
             cancellationToken: ct);
         var categoriesById = categories.ToDictionary(category => category.Id);
+        var assets = await _uow.Assets.GetAllAsync(tenantId, includeInactive: false, cancellationToken: ct);
+        var assetsById = assets.ToDictionary(asset => asset.Id);
 
         foreach (var categoryId in requestedCategoryIds)
         {
@@ -96,9 +110,19 @@ public sealed class EmployeeService : IEmployeeService
                 throw new InvalidOperationException($"Asset category {categoryId} not found.");
         }
 
-        var existingSkills = employee.Skills.ToList();
+        foreach (var assetId in requestedAssetIds)
+        {
+            if (!assetsById.TryGetValue(assetId, out var asset))
+                throw new InvalidOperationException($"Asset {assetId} not found.");
 
-        foreach (var existingSkill in existingSkills.Where(skill => !requestedCategoryIds.Contains(skill.AssetCategoryId)))
+            if (asset.CategoryId != inputSkills.First(skill => skill.AssetId == assetId).AssetCategoryId)
+                throw new InvalidOperationException($"Asset {assetId} is not linked to the selected asset category.");
+        }
+
+        var existingSkills = employee.Skills.ToList();
+        var requestedKeys = inputSkills.Select(GetSkillKey).ToHashSet();
+
+        foreach (var existingSkill in existingSkills.Where(skill => !requestedKeys.Contains(GetSkillKey(skill))))
         {
             await _uow.Employees.DeleteSkillAsync(existingSkill, ct);
             employee.Skills.Remove(existingSkill);
@@ -108,8 +132,7 @@ public sealed class EmployeeService : IEmployeeService
 
         foreach (var inputSkill in inputSkills)
         {
-            var existingSkill = employee.Skills.FirstOrDefault(skill => skill.AssetCategoryId == inputSkill.AssetCategoryId);
-            var category = categoriesById[inputSkill.AssetCategoryId];
+            var existingSkill = employee.Skills.FirstOrDefault(skill => GetSkillKey(skill) == GetSkillKey(inputSkill));
 
             if (existingSkill is null)
             {
@@ -118,8 +141,8 @@ public sealed class EmployeeService : IEmployeeService
                     Id = Guid.NewGuid(),
                     EmployeeId = employee.Id,
                     Employee = employee,
-                    AssetCategoryId = category.Id,
-                    AssetCategory = category,
+                    AssetCategoryId = inputSkill.AssetCategoryId,
+                    AssetId = inputSkill.AssetId,
                     SkillLevel = inputSkill.SkillLevel,
                     CanOperate = inputSkill.CanOperate,
                     CanMaintain = inputSkill.CanMaintain,
@@ -134,8 +157,8 @@ public sealed class EmployeeService : IEmployeeService
                 continue;
             }
 
-            existingSkill.AssetCategory = category;
             existingSkill.SkillLevel = inputSkill.SkillLevel;
+            existingSkill.AssetId = inputSkill.AssetId;
             existingSkill.CanOperate = inputSkill.CanOperate;
             existingSkill.CanMaintain = inputSkill.CanMaintain;
             existingSkill.CanApproveMaintenance = inputSkill.CanApproveMaintenance;
@@ -149,7 +172,15 @@ public sealed class EmployeeService : IEmployeeService
         await _uow.Employees.UpdateAsync(employee, ct);
         await _uow.SaveChangesAsync(ct);
 
-        return employee.Skills
+        var refreshedEmployee = await _uow.Employees.GetByIdAsync(
+            tenantId,
+            employeeId,
+            includeSkills: true,
+            includeAssignments: true,
+            cancellationToken: ct)
+            ?? throw new InvalidOperationException($"Employee {employeeId} not found after update.");
+
+        return refreshedEmployee.Skills
             .OrderBy(skill => skill.AssetCategory?.Name ?? string.Empty)
             .Select(MapSkill)
             .ToList();
@@ -219,8 +250,14 @@ public sealed class EmployeeService : IEmployeeService
             CreatedAtUtc = employee.CreatedAtUtc,
             UpdatedAtUtc = employee.UpdatedAtUtc,
             Skills = employee.Skills
-                .OrderBy(skill => skill.AssetCategory?.Name ?? string.Empty)
+                .OrderBy(skill => skill.Asset is null ? 0 : 1)
+                .ThenBy(skill => skill.Asset?.Name ?? skill.AssetCategory?.Name ?? string.Empty)
                 .Select(MapSkill)
+                .ToList(),
+            AssignedAssets = employee.AssetAssignments
+                .Where(assignment => assignment.Status == AssetAssignmentStatus.Active && assignment.Asset is not null)
+                .OrderByDescending(assignment => assignment.AssignedAtUtc)
+                .Select(MapAssignedAsset)
                 .ToList()
         };
 
@@ -230,6 +267,12 @@ public sealed class EmployeeService : IEmployeeService
             Id = skill.Id,
             AssetCategoryId = skill.AssetCategoryId,
             AssetCategoryName = skill.AssetCategory?.Name ?? string.Empty,
+            AssetId = skill.AssetId,
+            AssetName = skill.Asset?.Name,
+            IsMachineSpecific = skill.AssetId.HasValue,
+            ScopeLabel = skill.Asset is not null
+                ? $"{skill.Asset.Name} ({skill.Asset.Code})"
+                : skill.AssetCategory?.Name ?? string.Empty,
             AssetType = skill.AssetCategory is null ? 0 : (int)skill.AssetCategory.AssetType,
             SkillLevel = skill.SkillLevel,
             CanOperate = skill.CanOperate,
@@ -238,6 +281,17 @@ public sealed class EmployeeService : IEmployeeService
             Notes = skill.Notes,
             CreatedAtUtc = skill.CreatedAtUtc,
             UpdatedAtUtc = skill.UpdatedAtUtc
+        };
+
+    private static EmployeeAssignedAssetDto MapAssignedAsset(AssetAssignment assignment) =>
+        new()
+        {
+            AssetId = assignment.AssetId,
+            AssetName = assignment.Asset?.Name ?? string.Empty,
+            AssetCode = assignment.Asset?.Code ?? string.Empty,
+            AssetCategoryName = assignment.Asset?.Category,
+            AssignedAtUtc = assignment.AssignedAtUtc,
+            DueBackAtUtc = assignment.DueBackAtUtc
         };
 
     private async Task<Department?> ResolveDepartmentAsync(
@@ -262,4 +316,14 @@ public sealed class EmployeeService : IEmployeeService
 
     private static string? TrimOrNull(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string GetSkillKey(UpsertEmployeeSkillRequest skill)
+        => skill.AssetId.HasValue
+            ? $"asset:{skill.AssetId.Value}"
+            : $"category:{skill.AssetCategoryId}";
+
+    private static string GetSkillKey(EmployeeSkill skill)
+        => skill.AssetId.HasValue
+            ? $"asset:{skill.AssetId.Value}"
+            : $"category:{skill.AssetCategoryId}";
 }

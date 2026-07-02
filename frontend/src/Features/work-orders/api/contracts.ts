@@ -97,6 +97,7 @@ export interface UpdateWorkOrderRequest {
   description: string;
   type: WorkOrderType;
   priority: WorkOrderPriority;
+  assetId?: string | null;
   assignedToEmployeeId?: string | null;
   dueAtUtc?: string | null;
   estimatedMinutes?: number | null;

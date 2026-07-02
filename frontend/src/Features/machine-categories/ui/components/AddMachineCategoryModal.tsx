@@ -11,11 +11,12 @@ import {
 type Props = {
   open: boolean;
   onClose: () => void;
-  onCreated: (category: AssetCategoryDto) => void;
+  onSaved: (category: AssetCategoryDto) => void;
+  category?: AssetCategoryDto | null;
 };
 
 type DraftParameter = AssetCategoryParameterRequest & {
-  id: string;
+  localId: string;
 };
 
 const typeOptions = [
@@ -25,14 +26,57 @@ const typeOptions = [
   { value: AssetParameterType.Select, label: "Lista wyboru" },
 ];
 
-export function AddMachineCategoryModal({ open, onClose, onCreated }: Props) {
+function createEmptyDraftParameter(displayOrder: number): DraftParameter {
+  return {
+    localId: crypto.randomUUID(),
+    id: null,
+    name: "",
+    code: "",
+    type: AssetParameterType.Text,
+    unit: "",
+    isRequired: false,
+    displayOrder,
+    defaultValue: "",
+    options: [],
+  };
+}
+
+function mapCategoryParameters(category?: AssetCategoryDto | null): DraftParameter[] {
+  if (!category) return [];
+
+  return category.parameters
+    .slice()
+    .sort((left, right) => left.displayOrder - right.displayOrder)
+    .map((parameter, index) => ({
+      localId: parameter.id,
+      id: parameter.id,
+      name: parameter.name,
+      code: parameter.code,
+      type: parameter.type,
+      unit: parameter.unit ?? "",
+      isRequired: parameter.isRequired,
+      displayOrder: index,
+      defaultValue: parameter.defaultValue ?? "",
+      options: [...parameter.options],
+    }));
+}
+
+export function AddMachineCategoryModal({
+  open,
+  onClose,
+  onSaved,
+  category,
+}: Props) {
   const nameId = useId();
   const codeId = useId();
   const descriptionId = useId();
+  const isActiveId = useId();
+  const isEditing = !!category;
 
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
+  const [isActive, setIsActive] = useState(true);
   const [parameters, setParameters] = useState<DraftParameter[]>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -40,48 +84,41 @@ export function AddMachineCategoryModal({ open, onClose, onCreated }: Props) {
   useEffect(() => {
     if (!open) return;
 
-    setName("");
-    setCode("");
-    setDescription("");
-    setParameters([]);
+    setName(category?.name ?? "");
+    setCode(category?.code ?? "");
+    setDescription(category?.description ?? "");
+    setIsActive(category?.isActive ?? true);
+    setParameters(mapCategoryParameters(category));
     setError("");
     setSaving(false);
-  }, [open]);
+  }, [category, open]);
 
   if (!open) return null;
 
   const addParameter = () => {
     setParameters((prev) => [
       ...prev,
-      {
-        id: crypto.randomUUID(),
-        name: "",
-        code: "",
-        type: AssetParameterType.Text,
-        unit: "",
-        isRequired: false,
-        displayOrder: prev.length,
-        defaultValue: "",
-        options: [],
-      },
+      createEmptyDraftParameter(prev.length),
     ]);
   };
 
   const updateParameter = (
-    parameterId: string,
+    parameterLocalId: string,
     patch: Partial<DraftParameter>
   ) => {
     setParameters((prev) =>
       prev.map((parameter) =>
-        parameter.id === parameterId ? { ...parameter, ...patch } : parameter
+        parameter.localId === parameterLocalId
+          ? { ...parameter, ...patch }
+          : parameter
       )
     );
   };
 
-  const removeParameter = (parameterId: string) => {
+  const removeParameter = (parameterLocalId: string) => {
     setParameters((prev) =>
       prev
-        .filter((parameter) => parameter.id !== parameterId)
+        .filter((parameter) => parameter.localId !== parameterLocalId)
         .map((parameter, index) => ({ ...parameter, displayOrder: index }))
     );
   };
@@ -99,33 +136,67 @@ export function AddMachineCategoryModal({ open, onClose, onCreated }: Props) {
       return;
     }
 
+    const normalizedParameters = parameters.map((parameter, index) => {
+      const normalizedOptions =
+        parameter.type === AssetParameterType.Select
+          ? parameter.options.map((option) => option.trim()).filter(Boolean)
+          : [];
+
+      return {
+        id: parameter.id || null,
+        name: parameter.name.trim(),
+        code: parameter.code.trim().toUpperCase(),
+        type: parameter.type,
+        unit: parameter.unit?.trim() || null,
+        isRequired: parameter.isRequired,
+        displayOrder: index,
+        defaultValue: parameter.defaultValue?.trim() || null,
+        options: normalizedOptions,
+      };
+    });
+
+    const invalidParameterIndex = normalizedParameters.findIndex(
+      (parameter) => !parameter.name || !parameter.code
+    );
+    if (invalidParameterIndex >= 0) {
+      setError(
+        `Parametr ${invalidParameterIndex + 1} wymaga nazwy oraz kodu.`
+      );
+      return;
+    }
+
+    const invalidSelectIndex = normalizedParameters.findIndex(
+      (parameter) =>
+        parameter.type === AssetParameterType.Select &&
+        parameter.options.length === 0
+    );
+    if (invalidSelectIndex >= 0) {
+      setError(
+        `Parametr ${invalidSelectIndex + 1} typu lista musi miec przynajmniej jedna opcje.`
+      );
+      return;
+    }
+
     setSaving(true);
     setError("");
 
     try {
-      const created = await assetCategoriesApi.create({
+      const payload = {
         name: name.trim(),
         code: code.trim().toUpperCase(),
         assetType: AssetType.Machine,
         description: description.trim() || null,
-        parameters: parameters.map((parameter, index) => ({
-          name: parameter.name.trim(),
-          code: parameter.code.trim().toUpperCase(),
-          type: parameter.type,
-          unit: parameter.unit?.trim() || null,
-          isRequired: parameter.isRequired,
-          displayOrder: index,
-          defaultValue: parameter.defaultValue?.trim() || null,
-          options:
-            parameter.type === AssetParameterType.Select
-              ? parameter.options
-                  .map((option) => option.trim())
-                  .filter(Boolean)
-              : [],
-        })),
-      });
+        parameters: normalizedParameters,
+      };
 
-      onCreated(created);
+      const saved = category
+        ? await assetCategoriesApi.update(category.id, {
+            ...payload,
+            isActive,
+          })
+        : await assetCategoriesApi.create(payload);
+
+      onSaved(saved);
       onClose();
     } catch (err) {
       if (err instanceof ApiError) {
@@ -148,7 +219,9 @@ export function AddMachineCategoryModal({ open, onClose, onCreated }: Props) {
     >
       <div className="w-full max-w-4xl rounded-xl bg-white shadow-2xl">
         <div className="border-b px-5 py-3">
-          <h2 className="text-base font-semibold">Dodaj kategorie maszyny</h2>
+          <h2 className="text-base font-semibold">
+            {isEditing ? "Edytuj kategorie maszyny" : "Dodaj kategorie maszyny"}
+          </h2>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 px-5 py-4">
@@ -187,28 +260,44 @@ export function AddMachineCategoryModal({ open, onClose, onCreated }: Props) {
             </div>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label htmlFor={descriptionId} className="text-sm text-slate-600">
-              Opis
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
+            <div className="flex flex-col gap-1">
+              <label htmlFor={descriptionId} className="text-sm text-slate-600">
+                Opis
+              </label>
+              <textarea
+                id={descriptionId}
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                rows={3}
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-300"
+                placeholder="Jakiego typu maszyny obejmuje ta kategoria?"
+              />
+            </div>
+
+            <label
+              htmlFor={isActiveId}
+              className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-3 text-sm text-slate-700"
+            >
+              <input
+                id={isActiveId}
+                type="checkbox"
+                checked={isActive}
+                onChange={(event) => setIsActive(event.target.checked)}
+                className="rounded border-slate-300"
+              />
+              Kategoria aktywna
             </label>
-            <textarea
-              id={descriptionId}
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              rows={3}
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-300"
-              placeholder="Jakiego typu maszyny obejmuje ta kategoria?"
-            />
           </div>
 
           <div className="rounded-xl border border-slate-200">
             <div className="flex items-center justify-between border-b px-4 py-3">
               <div>
                 <div className="text-sm font-medium text-slate-900">
-                  Szablon parametr?w
+                  Szablon parametrow
                 </div>
                 <div className="text-xs text-slate-500">
-                  Zdefiniuj pola, kt?re beda uzupełniane na konkretnych maszynach.
+                  Zdefiniuj pola, ktore beda uzupelniane na konkretnych maszynach.
                 </div>
               </div>
               <button
@@ -223,13 +312,13 @@ export function AddMachineCategoryModal({ open, onClose, onCreated }: Props) {
             <div className="space-y-3 p-4">
               {parameters.length === 0 ? (
                 <div className="rounded-md border border-dashed border-slate-200 px-3 py-6 text-sm text-slate-500">
-                  Brak parametr?w. Dodaj np. moc, pole robocze, rok produkcji albo medium.
+                  Brak parametrow. Dodaj np. moc, pole robocze, rok produkcji albo medium.
                 </div>
               ) : null}
 
               {parameters.map((parameter, index) => (
                 <div
-                  key={parameter.id}
+                  key={parameter.localId}
                   className="rounded-lg border border-slate-200 p-3"
                 >
                   <div className="mb-3 flex items-center justify-between">
@@ -238,7 +327,7 @@ export function AddMachineCategoryModal({ open, onClose, onCreated }: Props) {
                     </div>
                     <button
                       type="button"
-                      onClick={() => removeParameter(parameter.id)}
+                      onClick={() => removeParameter(parameter.localId)}
                       className="text-xs font-medium text-rose-700 hover:underline"
                     >
                       Usun
@@ -249,7 +338,7 @@ export function AddMachineCategoryModal({ open, onClose, onCreated }: Props) {
                     <input
                       value={parameter.name}
                       onChange={(event) =>
-                        updateParameter(parameter.id, { name: event.target.value })
+                        updateParameter(parameter.localId, { name: event.target.value })
                       }
                       className="rounded-md border border-slate-300 px-3 py-2 text-sm"
                       placeholder="Nazwa"
@@ -257,7 +346,7 @@ export function AddMachineCategoryModal({ open, onClose, onCreated }: Props) {
                     <input
                       value={parameter.code}
                       onChange={(event) =>
-                        updateParameter(parameter.id, { code: event.target.value })
+                        updateParameter(parameter.localId, { code: event.target.value })
                       }
                       className="rounded-md border border-slate-300 px-3 py-2 text-sm uppercase"
                       placeholder="Kod"
@@ -265,7 +354,7 @@ export function AddMachineCategoryModal({ open, onClose, onCreated }: Props) {
                     <select
                       value={parameter.type}
                       onChange={(event) =>
-                        updateParameter(parameter.id, {
+                        updateParameter(parameter.localId, {
                           type: Number(event.target.value) as AssetParameterType,
                         })
                       }
@@ -280,7 +369,7 @@ export function AddMachineCategoryModal({ open, onClose, onCreated }: Props) {
                     <input
                       value={parameter.unit ?? ""}
                       onChange={(event) =>
-                        updateParameter(parameter.id, { unit: event.target.value })
+                        updateParameter(parameter.localId, { unit: event.target.value })
                       }
                       className="rounded-md border border-slate-300 px-3 py-2 text-sm"
                       placeholder="Jednostka"
@@ -291,7 +380,7 @@ export function AddMachineCategoryModal({ open, onClose, onCreated }: Props) {
                     <input
                       value={parameter.defaultValue ?? ""}
                       onChange={(event) =>
-                        updateParameter(parameter.id, {
+                        updateParameter(parameter.localId, {
                           defaultValue: event.target.value,
                         })
                       }
@@ -301,7 +390,7 @@ export function AddMachineCategoryModal({ open, onClose, onCreated }: Props) {
                     <input
                       value={parameter.options.join(", ")}
                       onChange={(event) =>
-                        updateParameter(parameter.id, {
+                        updateParameter(parameter.localId, {
                           options: event.target.value.split(","),
                         })
                       }
@@ -314,7 +403,7 @@ export function AddMachineCategoryModal({ open, onClose, onCreated }: Props) {
                         type="checkbox"
                         checked={parameter.isRequired}
                         onChange={(event) =>
-                          updateParameter(parameter.id, {
+                          updateParameter(parameter.localId, {
                             isRequired: event.target.checked,
                           })
                         }
@@ -341,7 +430,11 @@ export function AddMachineCategoryModal({ open, onClose, onCreated }: Props) {
               disabled={saving}
               className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
             >
-              {saving ? "Zapisywanie..." : "Zapisz kategorie"}
+              {saving
+                ? "Zapisywanie..."
+                : isEditing
+                  ? "Zapisz zmiany"
+                  : "Zapisz kategorie"}
             </button>
           </div>
         </form>

@@ -78,6 +78,15 @@ export const assetsApi = {
       }
     ),
 
+  removePlacement: (assetId: string, signal?: AbortSignal) =>
+    apiDelete<void>(`/api/assets/${assetId}/placement`, {
+      signal,
+      withAuth: true,
+      responseType: "void",
+      notifyOnSuccess: true,
+      successMessage: "Maszyna została usunięta z hali.",
+    }),
+
   assign: (assetId: string, body: AssignAssetRequest, signal?: AbortSignal) =>
     apiPost<AssetAssignmentDto, AssignAssetRequest>(
       `/api/assets/${assetId}/assignments`,

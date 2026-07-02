@@ -23,7 +23,7 @@ export const LoginPage: React.FC = () => {
       <div className="min-h-screen w-full flex items-center justify-center bg-slate-950">
         <div className="flex flex-col items-center gap-3 text-slate-200">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
-          <div className="text-sm">Sprawdzanie sesji?</div>
+          <div className="text-sm">Sprawdzanie sesji...</div>
         </div>
       </div>
     );
@@ -76,7 +76,7 @@ export const LoginPage: React.FC = () => {
         let message =
           err.status === 401
             ? "Nieprawidlowy login lub haslo."
-            : "Nie udało się zalogowac.";
+            : "Nie udalo sie zalogowac.";
 
         const data = err.data as any;
         if (
@@ -89,7 +89,7 @@ export const LoginPage: React.FC = () => {
 
         setError(message);
       } else {
-        setError("Nie udało się polaczyc z serwerem. Spr?buj ponownie.");
+        setError("Nie udalo sie polaczyc z serwerem. Sprobuj ponownie.");
       }
     } finally {
       setIsSubmitting(false);
@@ -99,7 +99,7 @@ export const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen w-full bg-slate-950 text-slate-100">
       <div className="flex min-h-screen flex-col lg:flex-row">
-        {/* LEWY PANEL ? hero, tylko na duzych ekranach */}
+        {/* Lewy panel hero, tylko na duzych ekranach */}
         <section className="hidden lg:flex lg:w-7/12 flex-col justify-between p-10 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 border-r border-slate-800">
           <div>
             <div className="flex items-center gap-3 mb-8">
@@ -117,10 +117,10 @@ export const LoginPage: React.FC = () => {
             </div>
 
             <h1 className="text-3xl font-semibold tracking-tight mb-4">
-              Zaloguj się, aby pracowac z ukladami hal
+              Zaloguj sie, aby pracowac z ukladami hal
             </h1>
             <p className="text-sm text-slate-400 leading-relaxed max-w-xl">
-              Zarzadzaj projektami, tw?rz layouty gniazd produkcyjnych, analizuj
+              Zarzadzaj projektami, tworz layouty gniazd produkcyjnych, analizuj
               przeplyw materialu i przygotowuj warianty optymalizacyjne.
               Wszystko w jednym miejscu.
             </p>
@@ -132,7 +132,7 @@ export const LoginPage: React.FC = () => {
                 Projekty
               </div>
               <div className="text-sm font-semibold text-slate-100">
-                Centralne repo layout?w
+                Centralne repo layoutow
               </div>
             </div>
             <div className="rounded-xl border border-slate-700/70 bg-slate-900/40 p-3">
@@ -140,20 +140,20 @@ export const LoginPage: React.FC = () => {
                 Optymalizacja
               </div>
               <div className="text-sm font-semibold text-slate-100">
-                Por?wnanie wariant?w przeplywu
+                Porownanie wariantow przeplywu
               </div>
             </div>
           </div>
         </section>
 
-        {/* PRAWY PANEL ? formularz logowania */}
+        {/* Prawy panel formularza logowania */}
         <section className="flex w-full lg:w-5/12 items-center justify-center bg-slate-950/95 backdrop-blur-sm px-4 md:px-10 lg:px-12 py-10 lg:py-16">
           <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900/85 p-6 md:p-8 shadow-2xl shadow-emerald-500/15">
             <h2 className="text-xl md:text-2xl font-semibold tracking-tight text-slate-50 mb-2">
               Logowanie
             </h2>
             <p className="text-xs text-slate-400 mb-6">
-              Uzyj konta FlowCraft (rola Admin / Planner / Viewer).
+              Zaloguj sie, aby przejsc do przestrzeni roboczej FlowCraft.
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -171,7 +171,7 @@ export const LoginPage: React.FC = () => {
                   value={form.login}
                   onChange={handleChange("login")}
                   className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  placeholder="np. admin lub admin@flowcraft.local"
+                  placeholder="Wpisz login lub adres e-mail"
                 />
               </div>
 
@@ -189,7 +189,7 @@ export const LoginPage: React.FC = () => {
                   value={form.password}
                   onChange={handleChange("password")}
                   className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  placeholder="????????"
+                  placeholder="Wpisz haslo"
                 />
               </div>
 
@@ -207,18 +207,9 @@ export const LoginPage: React.FC = () => {
                 disabled={isSubmitting}
                 className="w-full inline-flex items-center justify-center rounded-md bg-emerald-500 px-3 py-2 text-sm font-semibold text-slate-950 shadow-md shadow-emerald-500/30 hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
               >
-                {isSubmitting ? "Logowanie..." : "Zaloguj się"}
+                {isSubmitting ? "Logowanie..." : "Zaloguj sie"}
               </button>
             </form>
-
-            <div className="mt-6 text-[11px] text-slate-500">
-              <div>Domyslny uzytkownik (seed z backenda):</div>
-              <div className="mt-1 font-mono text-[11px]">
-                login: <span className="text-slate-200">admin</span>
-                <br />
-                haslo: <span className="text-slate-200">Admin123!</span>
-              </div>
-            </div>
           </div>
         </section>
       </div>

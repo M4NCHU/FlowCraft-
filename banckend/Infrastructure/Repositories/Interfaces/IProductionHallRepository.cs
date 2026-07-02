@@ -13,6 +13,8 @@ public interface IProductionHallRepository
         CancellationToken cancellationToken = default);
 
     Task AddAsync(ProductionHall hall, CancellationToken cancellationToken = default);
+    Task AddSectionAsync(HallSection section, CancellationToken cancellationToken = default);
     Task UpdateAsync(ProductionHall hall, CancellationToken cancellationToken = default);
+    Task DeleteSectionAsync(HallSection section, CancellationToken cancellationToken = default);
     Task DeleteAsync(ProductionHall hall, CancellationToken cancellationToken = default);
 }

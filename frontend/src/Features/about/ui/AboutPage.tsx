@@ -17,6 +17,8 @@ export const AboutPage: React.FC = () => {
     <section className="flex flex-col gap-6">
       <PageHeader
         title="O firmie"
+        eyebrow="Ustawienia organizacji"
+        description="Dane firmy, tozsamosc organizacyjna i ustawienia wykorzystywane dalej w raportach oraz modulach operacyjnych."
         extra={
           <button
             type="button"

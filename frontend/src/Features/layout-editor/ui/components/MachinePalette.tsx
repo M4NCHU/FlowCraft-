@@ -13,13 +13,14 @@ type Props = {
   machines: MachinePaletteItem[];
   pendingMachineId: string | null;
   selectedAssetId: string | null;
+  canPick: boolean;
   onPick: (machineId: string) => void;
   onFocus: (machineId: string) => void;
 };
 
 const statusLabels: Record<AssetStatus, string> = {
-  [AssetStatus.Available]: "Dostępna",
-  [AssetStatus.InUse]: "W użyciu",
+  [AssetStatus.Available]: "Dostepna",
+  [AssetStatus.InUse]: "W uzyciu",
   [AssetStatus.InMaintenance]: "W serwisie",
   [AssetStatus.Broken]: "Uszkodzona",
   [AssetStatus.Retired]: "Wycofana",
@@ -29,13 +30,14 @@ export function MachinePalette({
   machines,
   pendingMachineId,
   selectedAssetId,
+  canPick,
   onPick,
   onFocus,
 }: Props) {
   if (machines.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-sm text-slate-500">
-        Brak maszyn spełniających kryteria.
+      <div className="rounded-lg border border-dashed border-slate-700 bg-slate-950 px-3 py-4 text-sm text-slate-400">
+        Brak maszyn spelniajacych kryteria.
       </div>
     );
   }
@@ -52,8 +54,8 @@ export function MachinePalette({
             className={[
               "rounded-lg border px-3 py-3",
               isSelected
-                ? "border-slate-900 bg-slate-900 text-white"
-                : "border-slate-200 bg-white",
+                ? "border-sky-500 bg-sky-950/60 text-white"
+                : "border-slate-800 bg-slate-950 text-slate-100",
             ].join(" ")}
           >
             <div className="flex items-start justify-between gap-3">
@@ -62,10 +64,10 @@ export function MachinePalette({
                 <div
                   className={[
                     "mt-1 text-xs",
-                    isSelected ? "text-slate-200" : "text-slate-500",
+                    isSelected ? "text-slate-200" : "text-slate-400",
                   ].join(" ")}
                 >
-                  {machine.code} • {machine.category ?? "Bez kategorii"}
+                  {machine.code} - {machine.category ?? "Bez kategorii"}
                 </div>
                 <div
                   className={[
@@ -74,7 +76,7 @@ export function MachinePalette({
                   ].join(" ")}
                 >
                   {statusLabels[machine.status]}
-                  {machine.isPlacedOnCurrentHall ? " • już na tej hali" : ""}
+                  {machine.isPlacedOnCurrentHall ? " - juz na tej hali" : ""}
                 </div>
               </div>
 
@@ -85,23 +87,28 @@ export function MachinePalette({
                   className={[
                     "rounded-md border px-2 py-1 text-[11px] font-medium",
                     isSelected
-                      ? "border-slate-700 bg-slate-800 text-white"
-                      : "border-slate-200 text-slate-700 hover:bg-slate-50",
+                      ? "border-sky-400 bg-sky-900/70 text-white"
+                      : "border-slate-700 text-slate-200 hover:bg-slate-900",
                   ].join(" ")}
                 >
-                  Pokaż
+                  Pokaz
                 </button>
                 <button
                   type="button"
                   onClick={() => onPick(machine.id)}
+                  disabled={!canPick}
                   className={[
-                    "rounded-md px-2 py-1 text-[11px] font-medium",
+                    "rounded-md px-2 py-1 text-[11px] font-medium disabled:cursor-not-allowed disabled:opacity-60",
                     isPending
-                      ? "bg-amber-500 text-white"
-                      : "bg-slate-900 text-white hover:bg-slate-800",
+                      ? "bg-amber-500 text-slate-950"
+                      : "bg-sky-500 text-slate-950 hover:bg-sky-400",
                   ].join(" ")}
                 >
-                  {isPending ? "Kliknij na planie" : "Umieść"}
+                  {!canPick
+                    ? "Wybierz sekcje"
+                    : isPending
+                      ? "Kliknij na planie"
+                      : "Umiesc"}
                 </button>
               </div>
             </div>

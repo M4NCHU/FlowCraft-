@@ -19,7 +19,6 @@ export function AddHallModal({
 }: Props) {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
-  const [areaSqMeters, setAreaSqMeters] = useState<number>(0);
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -40,7 +39,6 @@ export function AddHallModal({
         code: code.trim(),
         description: null,
         outlineJson: "[]",
-        areaSqMeters: Number.isFinite(areaSqMeters) ? areaSqMeters : 0,
       };
 
       const created = await createHall(payload);
@@ -62,7 +60,7 @@ export function AddHallModal({
           <div>
             <h3 className="text-sm font-semibold text-slate-900">Nowa hala</h3>
             <p className="mt-0.5 text-xs text-slate-500">
-              Po utworzeniu przejdziesz do edytora layoutu.
+              Po utworzeniu przejdziesz do edytora layoutu, gdzie narysujesz obrys hali.
             </p>
           </div>
           <button
@@ -97,18 +95,12 @@ export function AddHallModal({
               />
             </label>
 
-            <label className="flex flex-col gap-1 sm:col-span-2">
-              <span className="text-xs text-slate-600">Powierzchnia [m²]</span>
-              <input
-                type="number"
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                value={areaSqMeters}
-                onChange={(e) => setAreaSqMeters(Number(e.target.value))}
-                disabled={disabled}
-                min={0}
-                step={0.01}
-              />
-            </label>
+            <div className="flex flex-col gap-1 sm:col-span-2">
+              <span className="text-xs text-slate-600">Powierzchnia</span>
+              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                Wyliczy sie automatycznie po narysowaniu hali w edytorze.
+              </div>
+            </div>
           </div>
 
           {err && (

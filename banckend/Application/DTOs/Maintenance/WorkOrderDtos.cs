@@ -61,6 +61,7 @@ public sealed class UpdateWorkOrderRequest
     public string Description { get; set; } = string.Empty;
     public WorkOrderType Type { get; set; } = WorkOrderType.CorrectiveMaintenance;
     public WorkOrderPriority Priority { get; set; } = WorkOrderPriority.Medium;
+    public Guid? AssetId { get; set; }
     public Guid? AssignedToEmployeeId { get; set; }
     public DateTime? DueAtUtc { get; set; }
     public int? EstimatedMinutes { get; set; }

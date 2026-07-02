@@ -3,7 +3,6 @@
   code: string;
   description?: string | null;
   outlineJson: string;
-  areaSqMeters: number;
 }
 
 export interface UpdateHallRequest {
@@ -11,7 +10,6 @@ export interface UpdateHallRequest {
   code: string;
   description?: string | null;
   outlineJson: string;
-  areaSqMeters: number;
 }
 
 export interface HallSectionResponse {
@@ -27,6 +25,7 @@ export interface HallSummaryResponse {
   id: string;
   name: string;
   code: string;
+  outlineJson: string;
   areaSqMeters: number;
   sectionsCount: number;
 }

@@ -1,6 +1,7 @@
 using Domain.Assets;
 using Domain.Employees;
 using Domain.Instance;
+using Domain.Inventory;
 using Domain.Layouts;
 using Domain.Lean;
 using Domain.Maintenance;
@@ -43,6 +44,11 @@ public sealed class FlowCraftDbContext
     public DbSet<MaintenancePlan> MaintenancePlans => Set<MaintenancePlan>();
     public DbSet<MaintenanceExecution> MaintenanceExecutions => Set<MaintenanceExecution>();
     public DbSet<ImprovementIdea> ImprovementIdeas => Set<ImprovementIdea>();
+    public DbSet<InventoryCategory> InventoryCategories => Set<InventoryCategory>();
+    public DbSet<InventoryCategoryParameter> InventoryCategoryParameters => Set<InventoryCategoryParameter>();
+    public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
+    public DbSet<InventoryItemParameter> InventoryItemParameters => Set<InventoryItemParameter>();
+    public DbSet<InventoryProcurementOrder> InventoryProcurementOrders => Set<InventoryProcurementOrder>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -76,6 +82,126 @@ public sealed class FlowCraftDbContext
             b.Property(t => t.IsActive).HasDefaultValue(true);
             b.Property(t => t.CreatedAtUtc).IsRequired();
             b.Property(t => t.UpdatedAtUtc).IsRequired();
+        });
+
+        builder.Entity<InventoryCategory>(b =>
+        {
+            b.ToTable("inventory_categories");
+            b.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            b.Property(x => x.Code).HasMaxLength(64).IsRequired();
+            b.Property(x => x.Description).HasMaxLength(1000);
+            b.Property(x => x.DefaultSupplier).HasMaxLength(200);
+            b.Property(x => x.CreatedAtUtc).IsRequired();
+            b.Property(x => x.UpdatedAtUtc).IsRequired();
+
+            b.HasIndex(x => new { x.TenantId, x.Code }).IsUnique();
+
+            b.HasOne(x => x.Tenant)
+                .WithMany(t => t.InventoryCategories)
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<InventoryCategoryParameter>(b =>
+        {
+            b.ToTable("inventory_category_parameters");
+            b.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            b.Property(x => x.Code).HasMaxLength(64).IsRequired();
+            b.Property(x => x.Unit).HasMaxLength(64);
+            b.Property(x => x.Options).HasMaxLength(2000);
+            b.Property(x => x.CreatedAtUtc).IsRequired();
+            b.Property(x => x.UpdatedAtUtc).IsRequired();
+
+            b.HasIndex(x => new { x.InventoryCategoryId, x.Code }).IsUnique();
+
+            b.HasOne(x => x.InventoryCategory)
+                .WithMany(c => c.Parameters)
+                .HasForeignKey(x => x.InventoryCategoryId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<InventoryItem>(b =>
+        {
+            b.ToTable("inventory_items");
+            b.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            b.Property(x => x.SKU).HasMaxLength(64).IsRequired();
+            b.Property(x => x.Unit).HasMaxLength(64).IsRequired();
+            b.Property(x => x.Location).HasMaxLength(200).IsRequired();
+            b.Property(x => x.SupplierName).HasMaxLength(200);
+            b.Property(x => x.Notes).HasMaxLength(4000);
+            b.Property(x => x.UnitCost).HasPrecision(12, 2);
+            b.Property(x => x.QuantityOnHand).HasPrecision(18, 2);
+            b.Property(x => x.QuantityReserved).HasPrecision(18, 2);
+            b.Property(x => x.MinimumStock).HasPrecision(18, 2);
+            b.Property(x => x.ReorderQuantity).HasPrecision(18, 2);
+            b.Property(x => x.ServiceType).HasColumnName("servicetype");
+            b.Property(x => x.CreatedAtUtc).IsRequired();
+            b.Property(x => x.UpdatedAtUtc).IsRequired();
+
+            b.HasIndex(x => new { x.TenantId, x.SKU }).IsUnique();
+            b.HasIndex(x => new { x.TenantId, x.IsActive });
+
+            b.HasOne(x => x.Tenant)
+                .WithMany(t => t.InventoryItems)
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne(x => x.Category)
+                .WithMany(c => c.Items)
+                .HasForeignKey(x => x.CategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne(x => x.LinkedAsset)
+                .WithMany()
+                .HasForeignKey(x => x.LinkedAssetId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<InventoryItemParameter>(b =>
+        {
+            b.ToTable("inventory_item_parameters");
+            b.Property(x => x.Value).HasMaxLength(512).IsRequired();
+            b.Property(x => x.CreatedAtUtc).IsRequired();
+            b.Property(x => x.UpdatedAtUtc).IsRequired();
+
+            b.HasIndex(x => new { x.InventoryItemId, x.ParameterDefinitionId }).IsUnique();
+
+            b.HasOne(x => x.InventoryItem)
+                .WithMany(i => i.ParameterValues)
+                .HasForeignKey(x => x.InventoryItemId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne(x => x.ParameterDefinition)
+                .WithMany()
+                .HasForeignKey(x => x.ParameterDefinitionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<InventoryProcurementOrder>(b =>
+        {
+            b.ToTable("inventory_procurement_orders");
+            b.Property(x => x.Quantity).HasPrecision(18, 2);
+            b.Property(x => x.SupplierName).HasMaxLength(200);
+            b.Property(x => x.Notes).HasMaxLength(4000);
+            b.Property(x => x.CreatedAtUtc).IsRequired();
+            b.Property(x => x.UpdatedAtUtc).IsRequired();
+
+            b.HasIndex(x => new { x.TenantId, x.Status });
+
+            b.HasOne(x => x.Tenant)
+                .WithMany(t => t.InventoryProcurementOrders)
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne(x => x.InventoryItem)
+                .WithMany(i => i.ProcurementOrders)
+                .HasForeignKey(x => x.InventoryItemId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne(x => x.LinkedMaintenancePlan)
+                .WithMany()
+                .HasForeignKey(x => x.LinkedMaintenancePlanId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         builder.Entity<ProductionHall>(b =>
@@ -131,6 +257,8 @@ public sealed class FlowCraftDbContext
             b.Property(x => x.SerialNumber).HasMaxLength(128);
             b.Property(x => x.Manufacturer).HasMaxLength(128);
             b.Property(x => x.Model).HasMaxLength(128);
+            b.Property(x => x.FootprintLengthMeters).HasPrecision(10, 2);
+            b.Property(x => x.FootprintWidthMeters).HasPrecision(10, 2);
             b.Property(x => x.IsActive).HasDefaultValue(true);
             b.Property(x => x.CreatedAtUtc).IsRequired();
             b.Property(x => x.UpdatedAtUtc).IsRequired();
@@ -294,7 +422,13 @@ public sealed class FlowCraftDbContext
             b.Property(x => x.CreatedAtUtc).IsRequired();
             b.Property(x => x.UpdatedAtUtc).IsRequired();
 
-            b.HasIndex(x => new { x.EmployeeId, x.AssetCategoryId }).IsUnique();
+            b.HasIndex(x => new { x.EmployeeId, x.AssetCategoryId })
+                .IsUnique()
+                .HasFilter("\"AssetId\" IS NULL");
+
+            b.HasIndex(x => new { x.EmployeeId, x.AssetId })
+                .IsUnique()
+                .HasFilter("\"AssetId\" IS NOT NULL");
 
             b.HasOne(x => x.Employee)
                 .WithMany(e => e.Skills)
@@ -304,6 +438,11 @@ public sealed class FlowCraftDbContext
             b.HasOne(x => x.AssetCategory)
                 .WithMany(c => c.EmployeeSkills)
                 .HasForeignKey(x => x.AssetCategoryId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne(x => x.Asset)
+                .WithMany(a => a.EmployeeSkills)
+                .HasForeignKey(x => x.AssetId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

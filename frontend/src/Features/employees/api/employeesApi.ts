@@ -76,7 +76,7 @@ export const employeesApi = {
         signal,
         withAuth: true,
         notifyOnSuccess: true,
-        successMessage: "Macierz kompetencji została zaktualizowana.",
+        successMessage: "Uprawnienia pracownika zostaly zaktualizowane.",
       }
     ),
 };

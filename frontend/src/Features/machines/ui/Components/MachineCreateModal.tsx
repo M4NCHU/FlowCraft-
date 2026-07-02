@@ -24,11 +24,15 @@ export function MachineCreateModal({ open, onClose, onCreated }: Props) {
   const nameId = useId();
   const codeId = useId();
   const modelId = useId();
+  const footprintWidthId = useId();
+  const footprintLengthId = useId();
   const categoryId = useId();
 
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [model, setModel] = useState("");
+  const [footprintWidthMeters, setFootprintWidthMeters] = useState("");
+  const [footprintLengthMeters, setFootprintLengthMeters] = useState("");
   const [categories, setCategories] = useState<AssetCategoryDto[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [parameterValues, setParameterValues] = useState<Record<string, string>>({});
@@ -41,6 +45,8 @@ export function MachineCreateModal({ open, onClose, onCreated }: Props) {
     setName("");
     setCode("");
     setModel("");
+    setFootprintWidthMeters("");
+    setFootprintLengthMeters("");
     setCategories([]);
     setSelectedCategoryId("");
     setParameterValues({});
@@ -100,6 +106,18 @@ export function MachineCreateModal({ open, onClose, onCreated }: Props) {
       return;
     }
 
+    const parsedFootprintWidth = parseOptionalPositiveNumber(footprintWidthMeters);
+    if (parsedFootprintWidth instanceof Error) {
+      setError(parsedFootprintWidth.message);
+      return;
+    }
+
+    const parsedFootprintLength = parseOptionalPositiveNumber(footprintLengthMeters);
+    if (parsedFootprintLength instanceof Error) {
+      setError(parsedFootprintLength.message);
+      return;
+    }
+
     setSaving(true);
     setError("");
 
@@ -114,6 +132,8 @@ export function MachineCreateModal({ open, onClose, onCreated }: Props) {
         serialNumber: null,
         manufacturer: null,
         model: model.trim() || null,
+        footprintWidthMeters: parsedFootprintWidth,
+        footprintLengthMeters: parsedFootprintLength,
         isMobile: false,
         notes: null,
         parameters: buildMachineParameterPayload(
@@ -218,6 +238,40 @@ export function MachineCreateModal({ open, onClose, onCreated }: Props) {
             </div>
           </div>
 
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="flex flex-col gap-1">
+              <label htmlFor={footprintWidthId} className="text-sm text-slate-600">
+                Szerokość podstawy [m]
+              </label>
+              <input
+                id={footprintWidthId}
+                type="number"
+                min="0"
+                step="0.01"
+                value={footprintWidthMeters}
+                onChange={(event) => setFootprintWidthMeters(event.target.value)}
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-300"
+                placeholder="np. 2.40"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label htmlFor={footprintLengthId} className="text-sm text-slate-600">
+                Długość podstawy [m]
+              </label>
+              <input
+                id={footprintLengthId}
+                type="number"
+                min="0"
+                step="0.01"
+                value={footprintLengthMeters}
+                onChange={(event) => setFootprintLengthMeters(event.target.value)}
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-300"
+                placeholder="np. 5.80"
+              />
+            </div>
+          </div>
+
           <div className="rounded-lg border border-slate-200 p-3">
             <div className="mb-3 text-sm font-medium text-slate-900">
               Parametry maszyny
@@ -257,4 +311,16 @@ export function MachineCreateModal({ open, onClose, onCreated }: Props) {
       </div>
     </div>
   );
+}
+
+function parseOptionalPositiveNumber(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const parsed = Number(trimmed.replace(",", "."));
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return new Error("Wymiary maszyny muszą być większe od zera.");
+  }
+
+  return parsed;
 }

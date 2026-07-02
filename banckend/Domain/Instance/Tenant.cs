@@ -1,5 +1,6 @@
 using Domain.Assets;
 using Domain.Employees;
+using Domain.Inventory;
 using Domain.Lean;
 using Domain.Layouts;
 using Domain.Maintenance;
@@ -34,5 +35,8 @@ namespace Domain.Instance
         public ICollection<MaintenancePlan> MaintenancePlans { get; set; } = new List<MaintenancePlan>();
         public ICollection<MaintenanceExecution> MaintenanceExecutions { get; set; } = new List<MaintenanceExecution>();
         public ICollection<ImprovementIdea> ImprovementIdeas { get; set; } = new List<ImprovementIdea>();
+        public ICollection<InventoryCategory> InventoryCategories { get; set; } = new List<InventoryCategory>();
+        public ICollection<InventoryItem> InventoryItems { get; set; } = new List<InventoryItem>();
+        public ICollection<InventoryProcurementOrder> InventoryProcurementOrders { get; set; } = new List<InventoryProcurementOrder>();
     }
 }

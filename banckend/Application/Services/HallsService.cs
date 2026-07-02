@@ -1,6 +1,7 @@
-﻿using Application.Services.Interfaces;
+using Application.Services.Interfaces;
 using Domain.Layouts;
 using FlowCraft.Interfaces.Abstractions;
+using System.Text.Json;
 
 namespace Application.Services;
 
@@ -25,7 +26,6 @@ public sealed class HallsService : IHallsService
         string code,
         string? description,
         string outlineJson,
-        double areaSqMeters,
         CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
@@ -38,7 +38,7 @@ public sealed class HallsService : IHallsService
             Code = code.Trim(),
             Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
             OutlineJson = outlineJson,
-            AreaSqMeters = areaSqMeters,
+            AreaSqMeters = CalculateHallAreaSqMeters(outlineJson),
             IsActive = true,
             CreatedAtUtc = now,
             UpdatedAtUtc = now
@@ -57,7 +57,6 @@ public sealed class HallsService : IHallsService
         string code,
         string? description,
         string outlineJson,
-        double areaSqMeters,
         CancellationToken ct = default)
     {
         var hall = await _uow.ProductionHalls.GetByIdAsync(tenantId, hallId, includeSections: false, cancellationToken: ct);
@@ -69,7 +68,7 @@ public sealed class HallsService : IHallsService
         hall.Code = code.Trim();
         hall.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
         hall.OutlineJson = outlineJson;
-        hall.AreaSqMeters = areaSqMeters;
+        hall.AreaSqMeters = CalculateHallAreaSqMeters(outlineJson);
         hall.UpdatedAtUtc = DateTime.UtcNow;
 
         await _uow.ProductionHalls.UpdateAsync(hall, ct);
@@ -112,6 +111,7 @@ public sealed class HallsService : IHallsService
         if (hall is null)
             throw new InvalidOperationException($"Hall {hallId} not found.");
 
+        var now = DateTime.UtcNow;
         var section = new HallSection
         {
             Id = Guid.NewGuid(),
@@ -120,13 +120,14 @@ public sealed class HallsService : IHallsService
             Code = string.IsNullOrWhiteSpace(code) ? null : code.Trim(),
             Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
             OutlineJson = outlineJson,
-            AreaSqMeters = areaSqMeters
+            AreaSqMeters = areaSqMeters,
+            Order = hall.Sections.Count + 1,
+            IsActive = true,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
         };
 
-        hall.Sections.Add(section);
-        hall.UpdatedAtUtc = DateTime.UtcNow;
-
-        await _uow.ProductionHalls.UpdateAsync(hall, ct);
+        await _uow.ProductionHalls.AddSectionAsync(section, ct);
         await _uow.SaveChangesAsync(ct);
 
         return section;
@@ -157,10 +158,8 @@ public sealed class HallsService : IHallsService
         section.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
         section.OutlineJson = outlineJson;
         section.AreaSqMeters = areaSqMeters;
+        section.UpdatedAtUtc = DateTime.UtcNow;
 
-        hall.UpdatedAtUtc = DateTime.UtcNow;
-
-        await _uow.ProductionHalls.UpdateAsync(hall, ct);
         await _uow.SaveChangesAsync(ct);
     }
 
@@ -175,10 +174,100 @@ public sealed class HallsService : IHallsService
         if (section is null)
             return;
 
-        hall.Sections.Remove(section);
-        hall.UpdatedAtUtc = DateTime.UtcNow;
-
-        await _uow.ProductionHalls.UpdateAsync(hall, ct);
+        await _uow.ProductionHalls.DeleteSectionAsync(section, ct);
         await _uow.SaveChangesAsync(ct);
+    }
+
+    private static double CalculateHallAreaSqMeters(string outlineJson)
+    {
+        if (string.IsNullOrWhiteSpace(outlineJson))
+            return 0;
+
+        try
+        {
+            using var document = JsonDocument.Parse(outlineJson);
+            var root = document.RootElement;
+
+            var points = ExtractBoundaryPoints(root);
+            if (points.Count < 6)
+                return 0;
+
+            var metersPerGridCell = 1d;
+            var gridSize = 40d;
+
+            if (root.ValueKind == JsonValueKind.Object &&
+                root.TryGetProperty("scale", out var scaleElement))
+            {
+                if (scaleElement.TryGetProperty("metersPerGridCell", out var metersElement) &&
+                    metersElement.TryGetDouble(out var parsedMeters) &&
+                    parsedMeters > 0)
+                {
+                    metersPerGridCell = parsedMeters;
+                }
+
+                if (scaleElement.TryGetProperty("gridSize", out var gridElement) &&
+                    gridElement.TryGetDouble(out var parsedGrid) &&
+                    parsedGrid > 0)
+                {
+                    gridSize = parsedGrid;
+                }
+            }
+
+            var polygonArea = CalculatePolygonArea(points);
+            var metersPerPoint = metersPerGridCell / gridSize;
+
+            return Math.Round(Math.Abs(polygonArea) * metersPerPoint * metersPerPoint, 2);
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    private static List<double> ExtractBoundaryPoints(JsonElement root)
+    {
+        var source = root;
+
+        if (root.ValueKind == JsonValueKind.Object &&
+            root.TryGetProperty("boundary", out var boundaryElement))
+        {
+            source = boundaryElement;
+        }
+
+        if (source.ValueKind == JsonValueKind.Object &&
+            source.TryGetProperty("points", out var pointsElement))
+        {
+            source = pointsElement;
+        }
+
+        if (source.ValueKind != JsonValueKind.Array)
+            return [];
+
+        var points = new List<double>();
+        foreach (var entry in source.EnumerateArray())
+        {
+            if (entry.TryGetDouble(out var value) && double.IsFinite(value))
+            {
+                points.Add(value);
+            }
+        }
+
+        return points;
+    }
+
+    private static double CalculatePolygonArea(IReadOnlyList<double> points)
+    {
+        if (points.Count < 6)
+            return 0;
+
+        double area = 0;
+
+        for (var index = 0; index < points.Count; index += 2)
+        {
+            var nextIndex = (index + 2) % points.Count;
+            area += points[index] * points[nextIndex + 1] - points[nextIndex] * points[index + 1];
+        }
+
+        return Math.Abs(area / 2d);
     }
 }

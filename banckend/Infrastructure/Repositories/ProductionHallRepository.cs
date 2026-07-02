@@ -17,7 +17,7 @@ public sealed class ProductionHallRepository : IProductionHallRepository
     public async Task<IReadOnlyList<ProductionHall>> GetAllAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
         return await _db.ProductionHalls
-            .AsNoTracking()
+            .Include(x => x.Sections)
             .Where(x => x.TenantId == tenantId && x.IsActive)
             .OrderBy(x => x.Name)
             .ToListAsync(cancellationToken);
@@ -30,7 +30,6 @@ public sealed class ProductionHallRepository : IProductionHallRepository
         CancellationToken cancellationToken = default)
     {
         IQueryable<ProductionHall> query = _db.ProductionHalls
-            .AsNoTracking()
             .Where(x => x.TenantId == tenantId && x.IsActive);
 
         if (includeSections)
@@ -45,10 +44,23 @@ public sealed class ProductionHallRepository : IProductionHallRepository
         return _db.ProductionHalls.AddAsync(hall, cancellationToken).AsTask();
     }
 
+    public Task AddSectionAsync(HallSection section, CancellationToken cancellationToken = default)
+    {
+        if (section is null) throw new ArgumentNullException(nameof(section));
+        return _db.HallSections.AddAsync(section, cancellationToken).AsTask();
+    }
+
     public Task UpdateAsync(ProductionHall hall, CancellationToken cancellationToken = default)
     {
         if (hall is null) throw new ArgumentNullException(nameof(hall));
-        _db.ProductionHalls.Update(hall);
+        _db.Entry(hall).State = EntityState.Modified;
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteSectionAsync(HallSection section, CancellationToken cancellationToken = default)
+    {
+        if (section is null) throw new ArgumentNullException(nameof(section));
+        _db.HallSections.Remove(section);
         return Task.CompletedTask;
     }
 

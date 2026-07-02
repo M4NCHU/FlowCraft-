@@ -83,6 +83,7 @@ export interface AssetCategoryDto {
 }
 
 export interface AssetCategoryParameterRequest {
+  id?: string | null;
   name: string;
   code: string;
   type: AssetParameterType;
@@ -189,6 +190,8 @@ export interface AssetDetailsDto {
   serialNumber?: string | null;
   manufacturer?: string | null;
   model?: string | null;
+  footprintWidthMeters?: number | null;
+  footprintLengthMeters?: number | null;
   isMobile: boolean;
   isActive: boolean;
   purchasedAtUtc?: string | null;
@@ -217,6 +220,8 @@ export interface CreateAssetRequest {
   serialNumber?: string | null;
   manufacturer?: string | null;
   model?: string | null;
+  footprintWidthMeters?: number | null;
+  footprintLengthMeters?: number | null;
   isMobile: boolean;
   notes?: string | null;
   parameters: SetAssetParameterValueRequest[];
@@ -233,6 +238,8 @@ export interface UpdateAssetRequest {
   serialNumber?: string | null;
   manufacturer?: string | null;
   model?: string | null;
+  footprintWidthMeters?: number | null;
+  footprintLengthMeters?: number | null;
   isMobile: boolean;
   notes?: string | null;
   parameters: SetAssetParameterValueRequest[];
